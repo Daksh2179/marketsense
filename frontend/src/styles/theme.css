@@ -1,0 +1,41 @@
+:root {
+  /* Light mode colors */
+  --color-sidebar-bg: #f2f5fa;
+  --color-sidebar-text: #2c3e50;
+  --color-sidebar-hover: #e4e9f2;
+  --color-sidebar-active: #3498db;
+  
+  --color-main-bg: #ffffff;
+  --color-main-text: #333333;
+  --color-main-header: #1e3a8a;
+  
+  --color-card-bg: #ffffff;
+  --color-card-border: #e6e9f0;
+  
+  --color-primary: #3498db;
+  --color-primary-dark: #2980b9;
+  --color-secondary: #f39c12;
+  --color-positive: #2ecc71;
+  --color-negative: #e74c3c;
+}
+
+/* Dark mode colors - this works with the .dark class */
+.dark, [data-theme='dark'] {
+  --color-sidebar-bg: #1e293b;
+  --color-sidebar-text: #e2e8f0;
+  --color-sidebar-hover: #334155;
+  --color-sidebar-active: #60a5fa;
+  
+  --color-main-bg: #0f172a;
+  --color-main-text: #e2e8f0;
+  --color-main-header: #60a5fa;
+  
+  --color-card-bg: #1e293b;
+  --color-card-border: #334155;
+  
+  --color-primary: #60a5fa;
+  --color-primary-dark: #3b82f6;
+  --color-secondary: #f59e0b;
+  --color-positive: #10b981;
+  --color-negative: #ef4444;
+}
