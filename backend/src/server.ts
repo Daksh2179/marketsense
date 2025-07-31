@@ -3,53 +3,51 @@ import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
 import dotenv from 'dotenv';
-import { logger } from './utils/logger';
-import { connectToDatabase } from './config/database';
+import { connectDatabase } from './config/database';
 import routes from './routes';
+import { logger } from './utils/logger';
 
 // Load environment variables
 dotenv.config();
 
 // Create Express app
 const app = express();
-const port = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors());
 app.use(helmet());
 app.use(compression());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// API routes
+// Routes
 app.use('/api', routes);
 
-// Health check route
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'OK' });
+// Test endpoint for debugging
+app.get('/test', (req, res) => {
+  res.status(200).json({ message: 'Test endpoint works!' });
 });
 
-// Start server
-const startServer = async () => {
+// Connect to database and start server
+const startServer = async (): Promise<void> => {
   try {
-    // Connect to MongoDB - wrapped in try/catch so server can start even if DB connection fails
-    try {
-      await connectToDatabase();
-      logger.info('Connected to MongoDB');
-    } catch (dbError) {
-      logger.warn('MongoDB connection failed, but server will start anyway:', dbError);
-      logger.info('Some API endpoints requiring database access may not work');
-    }
+    // Connect to PostgreSQL
+    await connectDatabase();
     
     // Start Express server
-    app.listen(port, () => {
-      logger.info(`Server running on port ${port}`);
+    app.listen(PORT, () => {
+      logger.info(`Server running on port ${PORT}`);
     });
   } catch (error) {
-    logger.error('Failed to start server:', error);
-    process.exit(1);
+    logger.error('Failed to connect to database, but server will start anyway:', error);
+    
+    // Start server even if database connection fails
+    app.listen(PORT, () => {
+      logger.info('Server running on port ' + PORT);
+      logger.info('Some API endpoints requiring database access may not work');
+    });
   }
 };
 
 startServer();
-
-export default app;

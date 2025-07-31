@@ -17,42 +17,41 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   }, []);
   
   // Loading animation (centered spinner)
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-main-bg flex items-center justify-center">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5 }}
-          className="text-center"
-        >
-          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <h1 className="text-2xl font-bold text-main-header">MarketSense</h1>
-          <p className="text-main-text">Loading financial insights...</p>
-        </motion.div>
-      </div>
-    );
-  }
-  
+if (isLoading) {
   return (
-    <div className="min-h-screen bg-main-bg text-main-text">
-      <Header />
-      <div className="flex relative">
-        {/* Main content area with right padding for the sidebar */}
-        <motion.main
-          className="flex-1 p-4 md:p-6 pr-72" // Added right padding to make room for sidebar
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5 }}
-        >
-          {children}
-        </motion.main>
-        
-        {/* Sidebar positioned on the right */}
-        <AnimatedSidebar />
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto mb-4"></div>
+        <div className="text-2xl font-bold text-primary mb-2">MarketSense</div>
+        <div className="text-gray-600">Loading financial insights...</div>
       </div>
     </div>
   );
+}
+  
+return (
+  <div className="min-h-screen bg-main-bg text-main-text">
+    <Header />
+    <div className="flex relative">
+      {/* Sidebar positioned on the left */}
+      <div className="w-64 flex-shrink-0">
+        <AnimatedSidebar />
+      </div>
+      
+      {/* Main content area - CENTERED with max width */}
+      <motion.main
+        className="flex-1 p-4 md:p-6 w-full"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5 }}
+      >
+        <div className="max-w-6xl mx-auto">
+          {children}
+        </div>
+      </motion.main>
+    </div>
+  </div>
+);
 };
 
 export default MainLayout;

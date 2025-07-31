@@ -1,18 +1,48 @@
-import { Router } from 'express';
-import * as stockController from '../controllers/stockController';
+import express from 'express';
+import { stockController } from '../controllers/stockController';
 
-const router = Router();
+const router = express.Router();
 
-// GET /api/stocks
-router.get('/', stockController.getAllStocks);
+/**
+ * @route   GET /stocks/compare
+ * @desc    Compare multiple stocks
+ */
+router.get('/compare', stockController.compareStocks);
 
-// GET /api/stocks/:symbol
-router.get('/:symbol', stockController.getStockBySymbol);
+/**
+ * @route   GET /stocks/:ticker/price
+ * @desc    Get latest price for a stock
+ */
+router.get('/:ticker/price', stockController.getLatestPrice);
 
-// GET /api/stocks/:symbol/history
-router.get('/:symbol/history', stockController.getStockHistory);
+/**
+ * @route   GET /stocks/:ticker/history
+ * @desc    Get historical prices for a stock
+ */
+router.get('/:ticker/history', stockController.getHistoricalPrices);
 
-// GET /api/stocks/:symbol/predictions
-router.get('/:symbol/predictions', stockController.getPredictedPrices);
+/**
+ * @route   GET /stocks/:ticker/chart
+ * @desc    Get price chart data
+ */
+router.get('/:ticker/chart', stockController.getPriceChartData);
+
+/**
+ * @route   GET /stocks/:ticker/indicators
+ * @desc    Get technical indicators
+ */
+router.get('/:ticker/indicators', stockController.getTechnicalIndicators);
+
+/**
+ * @route   GET /stocks/:ticker/correlation
+ * @desc    Get price and sentiment correlation
+ */
+router.get('/:ticker/correlation', stockController.getPriceSentimentCorrelation);
+
+/**
+ * @route   GET /stocks/:ticker/regime
+ * @desc    Get market regime data
+ */
+router.get('/:ticker/regime', stockController.getMarketRegime);
 
 export default router;

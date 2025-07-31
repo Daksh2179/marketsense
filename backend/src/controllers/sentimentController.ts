@@ -1,83 +1,395 @@
 import { Request, Response } from 'express';
-import Sentiment from '../models/Sentiment';
+import { SentimentModel } from '../models/Sentiment';
+import { NewsHeadlineModel } from '../models/NewsHeadline';
+import { CompanyModel } from '../models/Company';
+import { SentimentService } from '../services/sentimentService';
+import { DataIngestionService } from '../services/dataIngestionService';
+import { logger } from '../utils/logger';
+import { GeminiService } from '../services/geminiService';
 
-// Get sentiment data for a stock
-export const getSentimentBySymbol = async (req: Request, res: Response): Promise<void> => {
+export const sentimentController = {
+  /**
+   * Get latest sentiment for a stock
+   */
+  getLatestSentiment: async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { ticker } = req.params;
+      
+      // Validate ticker
+      let company = await CompanyModel.getByTicker(ticker);
+      
+      // If company doesn't exist, try to fetch it first
+      if (!company) {
+        logger.info(`Company ${ticker} not found in database, fetching from API`);
+        const success = await DataIngestionService.fetchAndStoreCompanyData(ticker);
+        
+        if (success) {
+          company = await CompanyModel.getByTicker(ticker);
+          
+          // Also fetch price data, news, and calculate sentiment
+          await DataIngestionService.fetchAndStoreStockPrices(ticker);
+          await DataIngestionService.fetchAndStoreNewsHeadlines(ticker);
+          await DataIngestionService.calculateAndStoreSentiment(ticker);
+        }
+      }
+      
+      if (!company) {
+        res.status(404).json({ error: 'Company not found' });
+        return;
+      }
+      
+      const latestSentiment = await SentimentModel.getLatestSentiment(ticker);
+      
+      // If no sentiment data exists, try to calculate it
+      if (!latestSentiment) {
+        logger.info(`Sentiment data for ${ticker} not found, fetching news and calculating`);
+        
+        // Fetch news headlines first
+        await DataIngestionService.fetchAndStoreNewsHeadlines(ticker);
+        
+        // Calculate sentiment
+        await DataIngestionService.calculateAndStoreSentiment(ticker);
+        
+        // Try to get sentiment again
+        const recalculatedSentiment = await SentimentModel.getLatestSentiment(ticker);
+        
+        if (!recalculatedSentiment) {
+          res.status(404).json({ error: 'No sentiment data found for this stock' });
+          return;
+        }
+        
+        res.status(200).json(recalculatedSentiment);
+        return;
+      }
+      
+      res.status(200).json(latestSentiment);
+    } catch (error) {
+      logger.error(`Error fetching latest sentiment for ${req.params.ticker}:`, error);
+      res.status(500).json({ error: 'Failed to fetch latest sentiment' });
+    }
+  },
+
+  /**
+   * Get historical sentiment for a stock
+   */
+  getHistoricalSentiment: async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { ticker } = req.params;
+      const { startDate, endDate } = req.query;
+      
+      // Validate ticker
+      let company = await CompanyModel.getByTicker(ticker);
+      
+      // If company doesn't exist, try to fetch it first
+      if (!company) {
+        logger.info(`Company ${ticker} not found in database, fetching from API`);
+        const success = await DataIngestionService.fetchAndStoreCompanyData(ticker);
+        
+        if (success) {
+          company = await CompanyModel.getByTicker(ticker);
+          
+          // Also fetch price data, news, and calculate sentiment
+          await DataIngestionService.fetchAndStoreStockPrices(ticker);
+          await DataIngestionService.fetchAndStoreNewsHeadlines(ticker);
+          await DataIngestionService.calculateAndStoreSentiment(ticker);
+        }
+      }
+      
+      if (!company) {
+        res.status(404).json({ error: 'Company not found' });
+        return;
+      }
+      
+      const historicalSentiment = await SentimentModel.getHistoricalSentiment(
+        ticker, 
+        startDate as string, 
+        endDate as string
+      );
+      
+      // If no historical sentiment data, try to fetch news and calculate
+      if (historicalSentiment.length === 0) {
+        logger.info(`Historical sentiment for ${ticker} not found, fetching news and calculating`);
+        
+        // Fetch news headlines first
+        await DataIngestionService.fetchAndStoreNewsHeadlines(ticker);
+        
+        // Calculate sentiment
+        await DataIngestionService.calculateAndStoreSentiment(ticker);
+        
+        // Try to get sentiment again
+        const recalculatedSentiment = await SentimentModel.getHistoricalSentiment(
+          ticker, 
+          startDate as string, 
+          endDate as string
+        );
+        
+        if (recalculatedSentiment.length === 0) {
+          res.status(404).json({ error: 'No historical sentiment data found for this stock in the specified date range' });
+          return;
+        }
+        
+        res.status(200).json(recalculatedSentiment);
+        return;
+      }
+      
+      res.status(200).json(historicalSentiment);
+    } catch (error) {
+      logger.error(`Error fetching historical sentiment for ${req.params.ticker}:`, error);
+      res.status(500).json({ error: 'Failed to fetch historical sentiment' });
+    }
+  },
+
+  /**
+   * Get sentiment chart data
+   */
+  getSentimentChartData: async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { ticker } = req.params;
+      const { range } = req.query;
+      
+      // Validate ticker
+      let company = await CompanyModel.getByTicker(ticker);
+      
+      // If company doesn't exist, try to fetch it first
+      if (!company) {
+        logger.info(`Company ${ticker} not found in database, fetching from API`);
+        const success = await DataIngestionService.fetchAndStoreCompanyData(ticker);
+        
+        if (success) {
+          company = await CompanyModel.getByTicker(ticker);
+          
+          // Also fetch price data, news, and calculate sentiment
+          await DataIngestionService.fetchAndStoreStockPrices(ticker);
+          await DataIngestionService.fetchAndStoreNewsHeadlines(ticker);
+          await DataIngestionService.calculateAndStoreSentiment(ticker);
+        }
+      }
+      
+      if (!company) {
+        res.status(404).json({ error: 'Company not found' });
+        return;
+      }
+      
+      // Check if we have sentiment data
+      const sentimentCount = await SentimentModel.getSentimentCount(ticker);
+      
+      // If no sentiment data, fetch news and calculate
+      if (sentimentCount === 0) {
+        logger.info(`Sentiment data for ${ticker} not found, fetching news and calculating`);
+        
+        // Fetch news headlines first
+        await DataIngestionService.fetchAndStoreNewsHeadlines(ticker);
+        
+        // Calculate sentiment
+        await DataIngestionService.calculateAndStoreSentiment(ticker);
+      }
+      
+      const chartData = await SentimentModel.getSentimentChartData(
+        ticker, 
+        range as string
+      );
+      
+      res.status(200).json(chartData);
+    } catch (error) {
+      logger.error(`Error fetching sentiment chart data for ${req.params.ticker}:`, error);
+      res.status(500).json({ error: 'Failed to fetch sentiment chart data' });
+    }
+  },
+
+  /**
+   * Get sentiment trend
+   */
+  getSentimentTrend: async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { ticker } = req.params;
+      const days = req.query.days ? parseInt(req.query.days as string) : 30;
+      
+      // Validate ticker
+      let company = await CompanyModel.getByTicker(ticker);
+      
+      // If company doesn't exist, try to fetch it first
+      if (!company) {
+        logger.info(`Company ${ticker} not found in database, fetching from API`);
+        const success = await DataIngestionService.fetchAndStoreCompanyData(ticker);
+        
+        if (success) {
+          company = await CompanyModel.getByTicker(ticker);
+          
+          // Also fetch price data, news, and calculate sentiment
+          await DataIngestionService.fetchAndStoreStockPrices(ticker);
+          await DataIngestionService.fetchAndStoreNewsHeadlines(ticker);
+          await DataIngestionService.calculateAndStoreSentiment(ticker);
+        }
+      }
+      
+      if (!company) {
+        res.status(404).json({ error: 'Company not found' });
+        return;
+      }
+      
+      const trendData = await SentimentModel.getSentimentTrend(ticker, days);
+      
+      res.status(200).json(trendData);
+    } catch (error) {
+      logger.error(`Error fetching sentiment trend for ${req.params.ticker}:`, error);
+      res.status(500).json({ error: 'Failed to fetch sentiment trend' });
+    }
+  },
+
+
+  /**
+ * Get latest headlines with AI-powered sentiment analysis
+ */
+getHeadlinesWithSentiment: async (req: Request, res: Response): Promise<void> => {
   try {
-    const { symbol } = req.params;
-    const { period } = req.query;
+    const { ticker } = req.params;
+    const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
     
-    let startDate: Date;
-    const endDate = new Date();
+    // ... existing company validation code stays the same ...
+    let company = await CompanyModel.getByTicker(ticker);
     
-    // Determine start date based on period
-    switch (period) {
-      case '1D':
-        startDate = new Date(endDate.getTime() - 24 * 60 * 60 * 1000);
-        break;
-      case '1W':
-        startDate = new Date(endDate.getTime() - 7 * 24 * 60 * 60 * 1000);
-        break;
-      case '1M':
-        startDate = new Date(endDate.getTime() - 30 * 24 * 60 * 60 * 1000);
-        break;
-      case '3M':
-        startDate = new Date(endDate.getTime() - 90 * 24 * 60 * 60 * 1000);
-        break;
-      case '6M':
-        startDate = new Date(endDate.getTime() - 180 * 24 * 60 * 60 * 1000);
-        break;
-      case '1Y':
-        startDate = new Date(endDate.getTime() - 365 * 24 * 60 * 60 * 1000);
-        break;
-      default:
-        startDate = new Date(endDate.getTime() - 30 * 24 * 60 * 60 * 1000); // Default to 1M
+    if (!company) {
+      logger.info(`Company ${ticker} not found in database, fetching from API`);
+      const success = await DataIngestionService.fetchAndStoreCompanyData(ticker);
+      
+      if (success) {
+        company = await CompanyModel.getByTicker(ticker);
+        await DataIngestionService.fetchAndStoreNewsHeadlines(ticker);
+      }
     }
     
-    const sentimentData = await Sentiment.find({
-      symbol: symbol.toUpperCase(),
-      date: { $gte: startDate, $lte: endDate }
-    }).sort({ date: 1 });
+    if (!company) {
+      res.status(404).json({ error: 'Company not found' });
+      return;
+    }
     
-    res.status(200).json(sentimentData);
-  } catch (error) {
-    res.status(500).json({ message: 'Error fetching sentiment data', error });
-  }
-};
-
-// Get sentiment-enhanced predictions
-export const getSentimentEnhancedPredictions = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { symbol } = req.params;
+    // Get headlines
+    let headlines = await NewsHeadlineModel.getLatestHeadlines(ticker, limit);
     
-    // Mock data for demonstration
-    const today = new Date();
-    const predictions = Array.from({ length: 7 }, (_, i) => {
-      const date = new Date(today);
-      date.setDate(date.getDate() + i + 1);
+    if (headlines.length === 0) {
+      logger.info(`No headlines found for ${ticker}, fetching from API`);
+      const success = await DataIngestionService.fetchAndStoreNewsHeadlines(ticker);
       
-      // Generate a random technical price
-      const basePrice = 150;
-      const technicalFactor = 0.95 + Math.random() * 0.1;
-      const technicalPrice = basePrice * technicalFactor;
-      
-      // Add sentiment factor (random for demo)
-      const sentimentImpact = (Math.random() - 0.5) * 10; // -5% to +5%
-      const enhancedPrice = technicalPrice + sentimentImpact;
-      
-      return {
-        date: date.toISOString().split('T')[0],
-        technicalPrice: parseFloat(technicalPrice.toFixed(2)),
-        enhancedPrice: parseFloat(enhancedPrice.toFixed(2)),
-        sentimentImpact: parseFloat((sentimentImpact / technicalPrice * 100).toFixed(2)) // as percentage
-      };
-    });
+      if (success) {
+        headlines = await NewsHeadlineModel.getLatestHeadlines(ticker, limit);
+      }
+    }
     
+    if (headlines.length === 0) {
+      res.status(404).json({ error: 'No headlines found for this stock' });
+      return;
+    }
+    
+    // NEW: Use Gemini for intelligent analysis
+    const headlineTexts = headlines.map(h => h.headline);
+    const aiAnalysis = await GeminiService.analyzeNews(ticker, headlineTexts);
+    
+    // Enhanced response with AI insights
     res.status(200).json({
-      symbol: symbol.toUpperCase(),
-      predictions
+      company: company.name,
+      ticker: company.ticker,
+      headlines: headlines.map(h => ({
+        headline: h.headline,
+        source: h.source || 'Unknown',
+        published_at: h.published_at,
+        url: h.url || '#'
+      })),
+      // Add AI-powered insights
+      aiInsights: {
+        positiveSummary: aiAnalysis.positiveSummary,
+        negativeSummary: aiAnalysis.negativeSummary,
+        overallSentiment: aiAnalysis.overallSentiment,
+        keyThemes: aiAnalysis.keyThemes,
+        marketImpact: aiAnalysis.marketImpact
+      },
+      // Keep original sentiment terms for compatibility
+      sentimentTerms: SentimentService.extractSentimentTerms(headlines)
     });
   } catch (error) {
-    res.status(500).json({ message: 'Error generating sentiment-enhanced predictions', error });
+    logger.error(`Error fetching headlines with sentiment for ${req.params.ticker}:`, error);
+    res.status(500).json({ error: 'Failed to fetch headlines with sentiment' });
+  }
+},
+
+  /**
+   * Compare sentiments across stocks
+   */
+  compareSentiments: async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { tickers } = req.query;
+      
+      if (!tickers) {
+        res.status(400).json({ error: 'Tickers parameter is required' });
+        return;
+      }
+      
+      const tickerArray = (tickers as string).split(',').map(t => t.trim().toUpperCase());
+      
+      if (tickerArray.length < 2 || tickerArray.length > 5) {
+        res.status(400).json({ error: 'Please provide between 2 and 5 tickers for comparison' });
+        return;
+      }
+      
+      // Check if companies exist and fetch them if needed
+      for (const ticker of tickerArray) {
+        let company = await CompanyModel.getByTicker(ticker);
+        
+        if (!company) {
+          logger.info(`Company ${ticker} not found in database, fetching from API`);
+          const success = await DataIngestionService.fetchAndStoreCompanyData(ticker);
+          
+          if (success) {
+            // Fetch news and calculate sentiment
+            await DataIngestionService.fetchAndStoreNewsHeadlines(ticker);
+            await DataIngestionService.calculateAndStoreSentiment(ticker);
+          }
+        }
+      }
+      
+      // Validate tickers
+      const companies = await Promise.all(
+        tickerArray.map(ticker => CompanyModel.getByTicker(ticker))
+      );
+      
+      // Check if all companies exist
+      const missingCompanies = companies.map((company, index) => company ? null : tickerArray[index])
+        .filter(ticker => ticker !== null);
+      
+      if (missingCompanies.length > 0) {
+        res.status(404).json({ 
+          error: `The following companies were not found: ${missingCompanies.join(', ')}` 
+        });
+        return;
+      }
+      
+      // Get sentiment data for comparison
+      const sentimentData = await SentimentModel.compareSentiments(tickerArray);
+      
+      // Format comparison data
+      const comparisonData = tickerArray.map(ticker => ({
+        ticker,
+        company: companies.find(c => c?.ticker === ticker),
+        sentimentData: sentimentData[ticker] || []
+      }));
+      
+      res.status(200).json(comparisonData);
+    } catch (error) {
+      logger.error(`Error comparing sentiments:`, error);
+      res.status(500).json({ error: 'Failed to compare sentiments' });
+    }
+  },
+
+  /**
+   * Get sector sentiment heatmap
+   */
+  getSectorSentimentHeatmap: async (req: Request, res: Response): Promise<void> => {
+    try {
+      const heatmapData = await SentimentModel.getSectorSentimentHeatmap();
+      
+      res.status(200).json(heatmapData);
+    } catch (error) {
+      logger.error('Error fetching sector sentiment heatmap:', error);
+      res.status(500).json({ error: 'Failed to fetch sector sentiment heatmap' });
+    }
   }
 };

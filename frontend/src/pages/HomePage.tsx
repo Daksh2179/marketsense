@@ -1,9 +1,13 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useEffect } from 'react';
 import { motion, useAnimation } from 'framer-motion';
 import { useInView } from 'react-intersection-observer';
+import { useNavigate } from 'react-router-dom';
 import MainLayout from '../components/layout/MainLayout';
 import AnimatedHero from '../components/home/AnimatedHero';
 import AnimatedMetrics from '../components/home/AnimatedMetrics';
+import StockCard from '../components/home/StockCard';
+import TopPerformers from '../components/home/TopPerformers';
 
 // For scrolling sections with fade-in animation
 const FadeInSection: React.FC<{children: React.ReactNode, delay?: number}> = ({ children, delay = 0 }) => {
@@ -39,10 +43,10 @@ const FadeInSection: React.FC<{children: React.ReactNode, delay?: number}> = ({ 
 };
 
 const HomePage: React.FC = () => {
+  const navigate = useNavigate();
+  
   const navigateToCompany = (symbol: string) => {
-    console.log(`Navigating to ${symbol} details page`);
-    // In a real app, would use router navigation here
-    window.location.hash = `#company/${symbol}`;
+    navigate(`/dashboard/${symbol}`);
   };
   
   // Top positive sentiment stocks
@@ -68,21 +72,24 @@ const HomePage: React.FC = () => {
       source: 'TechCrunch', 
       timestamp: '2 hours ago', 
       sentiment: 0.85,
-      url: '#'
+      url: '#',
+      ticker: 'NVDA'
     },
     { 
       title: 'Federal Reserve Signals Possible Rate Cut in September Meeting', 
       source: 'Wall Street Journal', 
       timestamp: '3 hours ago', 
       sentiment: 0.65,
-      url: '#'
+      url: '#',
+      ticker: ''
     },
     { 
       title: 'Meta Faces New Regulatory Challenges in European Markets', 
       source: 'Reuters', 
       timestamp: '5 hours ago', 
       sentiment: -0.72,
-      url: '#'
+      url: '#',
+      ticker: 'META'
     }
   ];
   
@@ -96,6 +103,50 @@ const HomePage: React.FC = () => {
         <FadeInSection>
           <h2 className="text-2xl font-bold mb-4 text-main-header">Market Overview</h2>
           <AnimatedMetrics />
+        </FadeInSection>
+        
+        {/* Top Performers */}
+<FadeInSection delay={0.05}>
+  <h2 className="text-2xl font-bold mb-4 text-main-header">Market Movers</h2>
+  <TopPerformers 
+    gainers={[
+      { symbol: 'AAPL', name: 'Apple Inc.', price: 175.42, change: 2.35, percentChange: 1.36 },
+      { symbol: 'MSFT', name: 'Microsoft', price: 415.32, change: 5.43, percentChange: 1.32 },
+      { symbol: 'NVDA', name: 'NVIDIA', price: 223.18, change: 2.78, percentChange: 1.26 },
+      { symbol: 'AMZN', name: 'Amazon', price: 178.35, change: 3.15, percentChange: 1.80 },
+      { symbol: 'GOOGL', name: 'Alphabet', price: 173.42, change: 0.85, percentChange: 0.49 }
+    ]}
+    losers={[
+      { symbol: 'META', name: 'Meta Platforms', price: 473.28, change: -8.92, percentChange: -1.85 },
+      { symbol: 'BA', name: 'Boeing', price: 187.32, change: -3.45, percentChange: -1.81 },
+      { symbol: 'NFLX', name: 'Netflix', price: 632.85, change: -5.32, percentChange: -0.83 },
+      { symbol: 'JPM', name: 'JPMorgan Chase', price: 203.25, change: -1.23, percentChange: -0.60 },
+      { symbol: 'XOM', name: 'Exxon Mobil', price: 114.48, change: -0.52, percentChange: -0.45 }
+    ]}
+  />
+</FadeInSection>
+
+
+        {/* Trending Stocks */}
+        <FadeInSection delay={0.05}>
+          <h2 className="text-2xl font-bold mb-4 text-main-header">Trending Stocks</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            {topPositiveSentiment.slice(0, 4).map((stock, i) => (
+              <StockCard
+                key={stock.symbol}
+                symbol={stock.symbol}
+                name={stock.name}
+                price={stock.price}
+                change={stock.change}
+                changePercent={stock.percentChange}
+                additionalInfo={{
+                  'Sentiment': stock.sentiment.toFixed(2),
+                  'Volume': (stock.volume / 1000000).toFixed(1) + 'M'
+                }}
+              />
+            ))}
+          </div>
         </FadeInSection>
         
         {/* Sentiment-Driven Insights */}
@@ -117,14 +168,14 @@ const HomePage: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {topPositiveSentiment.map((stock, index) => (
+                    {topPositiveSentiment.map((stock, i) => (
                       <motion.tr 
                         key={stock.symbol} 
                         className="border-t border-card-border hover:bg-sidebar-hover cursor-pointer" 
                         onClick={() => navigateToCompany(stock.symbol)}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.1 + 0.2 }}
+                        transition={{ delay: i * 0.1 + 0.2 }}
                         whileHover={{ backgroundColor: 'rgba(0,0,0,0.05)' }}
                       >
                         <td className="py-2 px-3 font-semibold">{stock.symbol}</td>
@@ -140,7 +191,7 @@ const HomePage: React.FC = () => {
                                 className="h-full bg-positive rounded-full" 
                                 initial={{ width: 0 }}
                                 animate={{ width: `${(stock.sentiment * 100).toFixed(0)}%` }}
-                                transition={{ duration: 1, delay: index * 0.1 + 0.5 }}
+                                transition={{ duration: 1, delay: i * 0.1 + 0.5 }}
                               ></motion.div>
                             </div>
                             <span>{stock.sentiment.toFixed(2)}</span>
@@ -168,14 +219,14 @@ const HomePage: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {topNegativeSentiment.map((stock, index) => (
+                    {topNegativeSentiment.map((stock, i) => (
                       <motion.tr 
                         key={stock.symbol} 
                         className="border-t border-card-border hover:bg-sidebar-hover cursor-pointer" 
                         onClick={() => navigateToCompany(stock.symbol)}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.1 + 0.2 }}
+                        transition={{ delay: i * 0.1 + 0.2 }}
                         whileHover={{ backgroundColor: 'rgba(0,0,0,0.05)' }}
                       >
                         <td className="py-2 px-3 font-semibold">{stock.symbol}</td>
@@ -191,7 +242,7 @@ const HomePage: React.FC = () => {
                                 className="h-full bg-negative rounded-full" 
                                 initial={{ width: 0 }}
                                 animate={{ width: `${Math.abs(stock.sentiment * 100).toFixed(0)}%` }}
-                                transition={{ duration: 1, delay: index * 0.1 + 0.5 }}
+                                transition={{ duration: 1, delay: i * 0.1 + 0.5 }}
                               ></motion.div>
                             </div>
                             <span>{stock.sentiment.toFixed(2)}</span>
@@ -210,16 +261,21 @@ const HomePage: React.FC = () => {
         <FadeInSection delay={0.2}>
           <h2 className="text-2xl font-bold mb-4 text-main-header">Recent Market News</h2>
           <div className="bg-card-bg rounded-lg shadow-sm border border-card-border overflow-hidden mb-8">
-            {recentNews.map((news, index) => (
+            {recentNews.map((news, i) => (
               <motion.div 
-                key={index} 
-                className={`p-4 ${index < recentNews.length - 1 ? 'border-b border-card-border' : ''}`}
+                key={i} 
+                className={`p-4 ${i < recentNews.length - 1 ? 'border-b border-card-border' : ''}`}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.15 + 0.3 }}
+                transition={{ delay: i * 0.15 + 0.3 }}
               >
                 <div className="flex justify-between items-start">
-                  <h3 className="text-lg font-semibold mb-1">{news.title}</h3>
+                  <h3 
+                    className={`text-lg font-semibold mb-1 ${news.ticker ? 'cursor-pointer hover:text-primary' : ''}`}
+                    onClick={() => news.ticker ? navigateToCompany(news.ticker) : null}
+                  >
+                    {news.title}
+                  </h3>
                   <div className={`ml-4 px-2 py-1 rounded text-xs font-semibold ${
                     news.sentiment > 0.5 ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 
                     news.sentiment > 0 ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' : 
@@ -236,6 +292,17 @@ const HomePage: React.FC = () => {
                   <span>{news.source}</span>
                   <span className="mx-2">•</span>
                   <span>{news.timestamp}</span>
+                  {news.ticker && (
+                    <>
+                      <span className="mx-2">•</span>
+                      <span 
+                        className="font-medium cursor-pointer hover:text-primary"
+                        onClick={() => navigateToCompany(news.ticker)}
+                      >
+                        ${news.ticker}
+                      </span>
+                    </>
+                  )}
                 </div>
               </motion.div>
             ))}
@@ -302,6 +369,15 @@ const HomePage: React.FC = () => {
                   </p>
                 </motion.div>
               </div>
+            </div>
+            
+            <div className="text-center mt-8">
+              <button 
+                className="px-6 py-3 bg-primary text-white rounded-lg shadow-sm hover:bg-primary-dark transition-colors"
+                onClick={() => navigate('/dashboard')}
+              >
+                Try MarketSense Now
+              </button>
             </div>
           </div>
         </FadeInSection>
