@@ -6,14 +6,11 @@ import { SentimentScore } from '../models/Sentiment';
 
 dotenv.config();
 
-// Sentiment analysis options
-// 1. Use an external API (OPTION A)
-const SENTIMENT_API_KEY = process.env.SENTIMENT_API_KEY; // Optional external API key
-const SENTIMENT_API_URL = process.env.SENTIMENT_API_URL; // Optional external API URL
+// ML Service Configuration
+const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://localhost:5000';
+const ML_SERVICE_TIMEOUT = 30000; // 30 seconds for ML processing
 
-// 2. Use a local basic sentiment analysis (OPTION B)
-// These are simple word lists for demonstration purposes
-// In a production app, you would use a more sophisticated NLP library or API
+// Fallback sentiment analysis (basic word matching)
 const POSITIVE_WORDS = [
   'success', 'profit', 'growth', 'surge', 'rise', 'gain', 'positive', 'up',
   'soar', 'jump', 'exceed', 'beat', 'better', 'strong', 'bullish', 'advance',
@@ -21,7 +18,7 @@ const POSITIVE_WORDS = [
   'opportunity', 'partnership', 'acquisition', 'dividend', 'bonus', 'robust',
   'upgrade', 'outperform', 'buy', 'recommend', 'target', 'higher', 'record',
   'milestone', 'leadership', 'patent', 'award', 'expansion', 'diversify',
-  'deal', 'nears', 'take', 'over', 'partnership', 'agreement', 'acquire', 'merge'
+  'deal', 'nears', 'take', 'over', 'agreement', 'merge'
 ];
 
 const NEGATIVE_WORDS = [
@@ -31,15 +28,15 @@ const NEGATIVE_WORDS = [
   'penalty', 'debt', 'bankruptcy', 'layoff', 'cut', 'downgrade', 'underperform',
   'sell', 'avoid', 'lower', 'worst', 'failure', 'resign', 'scandal', 'recall',
   'delay', 'dispute', 'crisis', 'problem', 'challenge', 'volatility', 'uncertain',
-  'falls', 'withholds', 'concerns', 'drop', 'decline', 'worry'
+  'falls', 'withholds'
 ];
 
 /**
- * Sentiment Analysis Service
+ * Sentiment Analysis Service with FinBERT ML Integration
  */
 export class SentimentService {
   /**
-   * Analyze sentiment of headlines
+   * Analyze sentiment of headlines using FinBERT ML service with fallback
    */
   static async analyzeHeadlines(headlines: NewsHeadline[]): Promise<{
     overallSentiment: number;
@@ -50,65 +47,70 @@ export class SentimentService {
         return { overallSentiment: 0, headlineResults: [] };
       }
       
-      // If external API is configured, use it
-      if (SENTIMENT_API_KEY && SENTIMENT_API_URL) {
-        return await this.analyzeWithExternalApi(headlines);
-      } 
-      
-      // Otherwise, use basic local sentiment analysis
-      return this.analyzeWithBasicMethod(headlines);
+      // Try FinBERT ML service first
+      logger.info(`Analyzing ${headlines.length} headlines with FinBERT ML service`);
+      return await this.analyzeWithFinBERT(headlines);
     } catch (error) {
       logger.error('Error analyzing headlines sentiment:', error);
-      throw error;
+      logger.info('Falling back to basic sentiment analysis');
+      // Fallback to basic method
+      return this.analyzeWithBasicMethod(headlines);
     }
   }
-  
+
   /**
-   * Analyze using external sentiment API
+   * Analyze using FinBERT ML service (Primary Method)
    */
-  private static async analyzeWithExternalApi(headlines: NewsHeadline[]): Promise<{
+  private static async analyzeWithFinBERT(headlines: NewsHeadline[]): Promise<{
     overallSentiment: number;
     headlineResults: Array<{ headline: string; score: number }>;
   }> {
     try {
-      const texts = headlines.map(h => h.headline);
+      const headlineTexts = headlines.map(h => h.headline);
       
-      const response = await axios.post(SENTIMENT_API_URL!, {
-        texts,
-        apiKey: SENTIMENT_API_KEY
+      logger.info(`Sending ${headlineTexts.length} headlines to FinBERT service at ${ML_SERVICE_URL}`);
+      
+      const response = await axios.post(`${ML_SERVICE_URL}/analyze-sentiment`, {
+        headlines: headlineTexts
+      }, {
+        timeout: ML_SERVICE_TIMEOUT,
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
       
-      const results = response.data;
+      const data = response.data;
       
-      if (!results || !Array.isArray(results.scores)) {
-        throw new Error('Invalid response from sentiment API');
-      }
-      
-      const headlineResults = headlines.map((headline, index) => ({
-        headline: headline.headline,
-        score: results.scores[index]
-      }));
-      
-      const overallSentiment = headlineResults.reduce((sum, item) => sum + item.score, 0) / headlineResults.length;
+      logger.info(`FinBERT analysis complete. Overall sentiment: ${data.overall_sentiment}, Processed: ${data.analysis_metadata.processed_headlines} headlines`);
       
       return {
-        overallSentiment,
-        headlineResults
+        overallSentiment: data.overall_sentiment,
+        headlineResults: data.headline_results.map((item: any) => ({
+          headline: item.headline,
+          score: item.sentiment_score
+        }))
       };
-    } catch (error) {
-      logger.error('Error with external sentiment API:', error);
-      // Fall back to basic method if API fails
+    } catch (error: any) {
+      if (error.code === 'ECONNREFUSED') {
+        logger.warn('FinBERT ML service not available, using fallback analysis');
+      } else {
+        logger.error('FinBERT service error:', error.message);
+      }
+      
+      // Fall back to basic method if ML service fails
       return this.analyzeWithBasicMethod(headlines);
     }
   }
-  
+
   /**
-   * Analyze with basic word-matching sentiment analysis
+   * Analyze with basic word-matching sentiment analysis (Fallback Method)
    */
   private static analyzeWithBasicMethod(headlines: NewsHeadline[]): {
     overallSentiment: number;
     headlineResults: Array<{ headline: string; score: number }>;
   } {
+    logger.info('Using basic word-matching sentiment analysis');
+    
     const headlineResults = headlines.map(headlineObj => {
       const headline = headlineObj.headline.toLowerCase();
       
@@ -149,9 +151,39 @@ export class SentimentService {
       headlineResults
     };
   }
-  
+
   /**
-   * Calculate daily sentiment score for a stock
+   * Check ML service health
+   */
+  static async checkMLServiceHealth(): Promise<{
+    available: boolean;
+    status: string;
+    modelLoaded: boolean;
+  }> {
+    try {
+      const response = await axios.get(`${ML_SERVICE_URL}/health`, {
+        timeout: 5000
+      });
+      
+      const data = response.data;
+      
+      return {
+        available: true,
+        status: data.status,
+        modelLoaded: data.model_loaded
+      };
+    } catch (error) {
+      logger.warn('ML service health check failed:', (error as any).message);
+      return {
+        available: false,
+        status: 'unavailable',
+        modelLoaded: false
+      };
+    }
+  }
+
+  /**
+   * Calculate daily sentiment score for a stock with enhanced ML analysis
    */
   static async calculateDailySentiment(
     ticker: string,
@@ -160,7 +192,7 @@ export class SentimentService {
     try {
       const { overallSentiment, headlineResults } = await this.analyzeHeadlines(headlines);
       
-      // Count positive, negative, and neutral headlines
+      // Count positive, negative, and neutral headlines using ML scores
       let positiveCount = 0;
       let negativeCount = 0;
       let neutralCount = 0;
@@ -186,8 +218,8 @@ export class SentimentService {
       const sentimentScore: SentimentScore = {
         ticker,
         date: today,
-        sentiment_score: parseFloat(overallSentiment.toFixed(2)),
-        sentiment_magnitude: parseFloat(sentimentMagnitude.toFixed(2)),
+        sentiment_score: parseFloat(overallSentiment.toFixed(3)),
+        sentiment_magnitude: parseFloat(sentimentMagnitude.toFixed(3)),
         news_count: headlines.length,
         positive_count: positiveCount,
         negative_count: negativeCount,
@@ -201,7 +233,7 @@ export class SentimentService {
       throw error;
     }
   }
-  
+
   /**
    * Extract top sentiment terms from headlines
    */
@@ -246,7 +278,7 @@ export class SentimentService {
       negative: sortedNegative
     };
   }
-  
+
   /**
    * Analyze sentiment impact on stock price
    */

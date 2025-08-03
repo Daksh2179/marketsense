@@ -76,46 +76,15 @@ interface BackendHeadlinesResponse {
   };
 }
 
-// Chat Types for Universal AI Assistant
-interface ChatRequest {
-  message: string;
-  context?: {
-    currentStock?: string;
-    currentPage?: string;
-    portfolioSummary?: string;
-    recentNews?: string[];
-    userSession?: string;
+interface NewsHeadlinesResponse {
+  headlines: NewsHeadline[];
+  aiInsights?: {
+    positiveSummary: string[];
+    negativeSummary: string[];
+    keyThemes: { theme: string; sentiment: number }[];
+    marketImpact: string;
+    overallSentiment: number;
   };
-}
-
-interface ChatResponse {
-  response: string;
-  context: {
-    timestamp: string;
-    responseTime: number;
-    contextUsed: string[];
-    suggestedQuestions?: string[];
-  };
-  success: boolean;
-  error?: string;
-}
-
-interface ChatStatusResponse {
-  status: string;
-  capabilities: string[];
-  availableKeys: number;
-  responseTime: string;
-  contextAwareness: string[];
-  lastUpdated: string;
-}
-
-interface ConversationStartersResponse {
-  starters: string[];
-  context: {
-    currentStock: string | null;
-    currentPage: string;
-  };
-  timestamp: string;
 }
 
 interface BackendPrediction {
@@ -213,178 +182,6 @@ interface NewsHeadline {
   source: string;
   published_at: string;
   url: string;
-}
-
-interface NewsHeadlinesResponse {
-  headlines: NewsHeadline[];
-  aiInsights?: {
-    positiveSummary: string[];
-    negativeSummary: string[];
-    keyThemes: { theme: string; sentiment: number }[];
-    marketImpact: string;
-    overallSentiment: number;
-  };
-}
-
-// Market Data Types for Homepage
-interface MarketIndex {
-  name: string;
-  symbol: string;
-  value: number;
-  change: number;
-  changePercent: number;
-  timestamp?: string;
-  isFallback?: boolean;
-}
-
-interface MarketOverviewResponse {
-  indices: MarketIndex[];
-  lastUpdated: string;
-  isFallback?: boolean;
-}
-
-interface StockPerformer {
-  symbol: string;
-  name: string;
-  price: number;
-  change: number;
-  changePercent: number;
-}
-
-interface TopPerformersResponse {
-  gainers: StockPerformer[];
-  losers: StockPerformer[];
-  lastUpdated: string;
-  dataSource?: string;
-  isFallback?: boolean;
-}
-
-interface TrendingStock {
-  symbol: string;
-  name: string;
-  price: number;
-  change: number;
-  changePercent: number;
-  sentiment: number;
-  volume: number;
-  sector: string;
-  newsCount?: number;
-}
-
-interface TrendingStocksResponse {
-  trending: TrendingStock[];
-  lastUpdated: string;
-  dataSource?: string;
-  isFallback?: boolean;
-}
-
-interface SentimentStocksResponse {
-  positive: TrendingStock[];
-  negative: TrendingStock[];
-  lastUpdated: string;
-  dataSource?: string;
-  isFallback?: boolean;
-}
-
-interface MarketNewsItem {
-  title: string;
-  source: string;
-  timestamp: string;
-  url?: string;
-  description?: string;
-  sentiment: number;
-  ticker?: string | null;
-}
-
-interface MarketNewsResponse {
-  news: MarketNewsItem[];
-  lastUpdated: string;
-  dataSource?: string;
-  isFallback?: boolean;
-}
-
-interface MarketSummaryResponse {
-  marketOverview: MarketOverviewResponse;
-  topPerformers: TopPerformersResponse;
-  trendingStocks: TrendingStocksResponse;
-  recentNews: MarketNewsResponse;
-  summary: {
-    timestamp: string;
-    dataQuality: {
-      overview: string;
-      performers: string;
-      trending: string;
-      news: string;
-    };
-  };
-}
-
-// ML Types
-interface MLPredictionResponse {
-  ticker: string;
-  predictions: Array<{
-    date: string;
-    predicted_price: number;
-    upper_bound: number;
-    lower_bound: number;
-    confidence: number;
-    sentiment_factor: number;
-  }>;
-  technical_indicators: {
-    sma_20: number;
-    sma_50: number;
-    rsi: number;
-    bollinger_upper: number;
-    bollinger_lower: number;
-    current_price: number;
-  };
-  sentiment_analysis: {
-    correlation: number;
-    impact_strength: string;
-    analysis: string;
-    data_points: number;
-  };
-  model_metrics: {
-    model_type: string;
-    training_data_points: number;
-    sentiment_data_points: number;
-    features_used: string[];
-    architecture: string;
-  };
-  success: boolean;
-  warning?: string;
-}
-
-interface MLHealthResponse {
-  available: boolean;
-  status: string;
-  modelLoaded: boolean;
-  enhancedLSTMAvailable: boolean;
-}
-
-// Portfolio Analysis Types
-interface PortfolioAnalysisRequest {
-  stocks: Array<{
-    ticker: string;
-    name: string;
-    price: number;
-    changePercent: number;
-    sentiment: number;
-    sector: string;
-    shares?: number;
-    avgPrice?: number;
-    notes?: string;
-  }>;
-  riskTolerance: 'conservative' | 'neutral' | 'aggressive';
-}
-
-interface PortfolioAnalysisResponse {
-  overallHealth: string;
-  strengths: string[];
-  weaknesses: string[];
-  suggestions: string[];
-  riskAssessment: string;
-  diversificationScore: number;
 }
 
 // Helper functions for safe type conversion
@@ -656,61 +453,77 @@ export const api = createApi({
     checkMLHealth: builder.query<MLHealthResponse, void>({
       query: () => '/ml/health',
     }),
-
-    // Market Data Endpoints for Homepage
-    getMarketOverview: builder.query<MarketOverviewResponse, void>({
-      query: () => '/market/overview',
-      providesTags: ['StockData'],
-    }),
-
-    getTopPerformers: builder.query<TopPerformersResponse, void>({
-      query: () => '/market/performers',
-      providesTags: ['StockData'],
-    }),
-
-    getTrendingStocks: builder.query<TrendingStocksResponse, void>({
-      query: () => '/market/trending',
-      providesTags: ['StockData'],
-    }),
-
-    getStocksBySentiment: builder.query<SentimentStocksResponse, void>({
-      query: () => '/market/sentiment',
-      providesTags: ['SentimentData'],
-    }),
-
-    getMarketNews: builder.query<MarketNewsResponse, { limit?: number }>({
-      query: ({ limit = 10 }) => `/market/news?limit=${limit}`,
-      providesTags: ['SentimentData'],
-    }),
-
-    getMarketSummary: builder.query<MarketSummaryResponse, void>({
-      query: () => '/market/summary',
-      providesTags: ['StockData', 'SentimentData'],
-    }),
-
-    // Chat Endpoints for Universal AI Assistant
-    sendChatMessage: builder.mutation<ChatResponse, ChatRequest>({
-      query: (data) => ({
-        url: '/chat/message',
-        method: 'POST',
-        body: data,
-      }),
-    }),
-
-    getChatbotStatus: builder.query<ChatStatusResponse, void>({
-      query: () => '/chat/status',
-    }),
-
-    getConversationStarters: builder.query<ConversationStartersResponse, { currentStock?: string; currentPage?: string }>({
-      query: ({ currentStock, currentPage }) => {
-        const params = new URLSearchParams();
-        if (currentStock) params.append('currentStock', currentStock);
-        if (currentPage) params.append('currentPage', currentPage);
-        return `/chat/starters?${params.toString()}`;
-      },
-    }),
   }),
 });
+
+// ML Types
+interface MLPredictionResponse {
+  ticker: string;
+  predictions: Array<{
+    date: string;
+    predicted_price: number;
+    upper_bound: number;
+    lower_bound: number;
+    confidence: number;
+    sentiment_factor: number;
+  }>;
+  technical_indicators: {
+    sma_20: number;
+    sma_50: number;
+    rsi: number;
+    bollinger_upper: number;
+    bollinger_lower: number;
+    current_price: number;
+  };
+  sentiment_analysis: {
+    correlation: number;
+    impact_strength: string;
+    analysis: string;
+    data_points: number;
+  };
+  model_metrics: {
+    model_type: string;
+    training_data_points: number;
+    sentiment_data_points: number;
+    features_used: string[];
+    architecture: string;
+    training_timestamp?: string;
+  };
+  success: boolean;
+  warning?: string;
+}
+
+interface MLHealthResponse {
+  available: boolean;
+  status: string;
+  modelLoaded: boolean;
+  enhancedLSTMAvailable: boolean;
+}
+
+// Portfolio Analysis Types
+interface PortfolioAnalysisRequest {
+  stocks: Array<{
+    ticker: string;
+    name: string;
+    price: number;
+    changePercent: number;
+    sentiment: number;
+    sector: string;
+    shares?: number;
+    avgPrice?: number;
+    notes?: string;
+  }>;
+  riskTolerance: 'conservative' | 'neutral' | 'aggressive';
+}
+
+interface PortfolioAnalysisResponse {
+  overallHealth: string;
+  strengths: string[];
+  weaknesses: string[];
+  suggestions: string[];
+  riskAssessment: string;
+  diversificationScore: number;
+}
 
 // Export hooks for usage in functional components
 export const {
@@ -730,15 +543,4 @@ export const {
   useAnalyzePortfolioMutation,
   useGenerateMLPredictionsMutation,
   useCheckMLHealthQuery,
-  // Market Data Hooks
-  useGetMarketOverviewQuery,
-  useGetTopPerformersQuery,
-  useGetTrendingStocksQuery,
-  useGetStocksBySentimentQuery,
-  useGetMarketNewsQuery,
-  useGetMarketSummaryQuery,
-  // Chat Hooks
-  useSendChatMessageMutation,
-  useGetChatbotStatusQuery,
-  useGetConversationStartersQuery,
 } = api;

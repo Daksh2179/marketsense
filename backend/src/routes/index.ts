@@ -3,10 +3,13 @@ import companyRoutes from './companyRoutes';
 import stockRoutes from './stockRoutes';
 import sentimentRoutes from './sentimentRoutes';
 import predictionRoutes from './predictionRoutes';
+import portfolioRoutes from './portfolioRoutes';
+import mlRoutes from './mlRoutes';
+import marketRoutes from './marketRoutes';
+import chatRoutes from './chatRoutes';
 import { FinancialApiService } from '../services/financialApiService';
 import db from '../config/database';
 import { logger } from '../utils/logger';
-import portfolioRoutes from './portfolioRoutes';
 
 const router = express.Router();
 
@@ -80,5 +83,8 @@ router.use('/stocks', stockRoutes);
 router.use('/sentiment', sentimentRoutes);
 router.use('/predictions', predictionRoutes);
 router.use('/portfolio', portfolioRoutes);
+router.use('/ml', mlRoutes);
+router.use('/market', marketRoutes);
+router.use('/chat', chatRoutes);
 
 export default router;
