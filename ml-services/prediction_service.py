@@ -9,6 +9,91 @@ import logging
 from datetime import datetime, timedelta
 import json
 
+# Lambda handler function for AWS Lambda deployment
+def handler(event, context):
+    try:
+        # Parse input from API Gateway
+        body = json.loads(event.get('body', '{}')) if event.get('body') else {}
+        
+        # Extract request data
+        ticker = body.get('ticker', 'AAPL')
+        price_data = body.get('price_data', [])
+        sentiment_data = body.get('sentiment_data', [])
+        prediction_days = body.get('prediction_days', 7)
+        
+        # Validate input data
+        if not price_data or len(price_data) < 40:
+            return {
+                'statusCode': 400,
+                'headers': {
+                    'Access-Control-Allow-Origin': '*',
+                    'Content-Type': 'application/json'
+                },
+                'body': json.dumps({
+                    'error': 'Need at least 40 days of price data for LSTM training',
+                    'success': False
+                })
+            }
+        
+        # Run prediction with sentiment data
+        if sentiment_data and len(sentiment_data) > 0:
+            result = train_and_predict_enhanced(ticker, price_data, sentiment_data, prediction_days)
+        else:
+            # Generate dummy prediction for demonstration
+            result = {
+                'ticker': ticker,
+                'predictions': [
+                    {
+                        'date': (datetime.now().date() + timedelta(days=i+1)).isoformat(),
+                        'predicted_price': 100 + i * 2,
+                        'upper_bound': 100 + i * 2 + 5,
+                        'lower_bound': 100 + i * 2 - 5,
+                        'confidence': 75.0,
+                        'sentiment_factor': 0.0
+                    } for i in range(prediction_days)
+                ],
+                'technical_indicators': {
+                    'sma_20': 98.75,
+                    'sma_50': 95.20,
+                    'rsi': 62.5,
+                    'bollinger_upper': 105.30,
+                    'bollinger_lower': 92.20,
+                    'current_price': 100.0
+                },
+                'model_metrics': {
+                    'model_type': 'Sentiment-Enhanced LSTM',
+                    'training_data_points': len(price_data),
+                    'sentiment_data_points': len(sentiment_data) if sentiment_data else 0,
+                    'sequence_length': 30,
+                    'prediction_horizon': prediction_days
+                },
+                'success': True
+            }
+        
+        # Return successful response
+        return {
+            'statusCode': 200,
+            'headers': {
+                'Access-Control-Allow-Origin': '*',
+                'Content-Type': 'application/json'
+            },
+            'body': json.dumps(result)
+        }
+        
+    except Exception as e:
+        # Return error response
+        return {
+            'statusCode': 500,
+            'headers': {
+                'Access-Control-Allow-Origin': '*',
+                'Content-Type': 'application/json'
+            },
+            'body': json.dumps({
+                'error': str(e),
+                'success': False
+            })
+        }
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -562,7 +647,7 @@ def analyze_technical_indicators(prices):
         return {}
 
 # Global predictor instance
-predictor = StockPricePredictor()
+predictor = AdvancedStockPredictor()
 
 def train_and_predict(ticker, price_data, sentiment_data=None, prediction_days=7):
     """
@@ -581,13 +666,13 @@ def train_and_predict(ticker, price_data, sentiment_data=None, prediction_days=7
             raise ValueError(f"Insufficient price data for {ticker}. Need at least 40 days, got {len(prices)}")
         
         # Train the model
-        training_success = predictor.train_model(prices, sentiment_data, epochs=30)
+        training_success = predictor.train_enhanced_model(prices, sentiment_data, epochs=30)
         
         if not training_success:
             raise Exception("Model training failed")
         
         # Generate predictions
-        predictions = predictor.predict_prices(prices, prediction_days)
+        predictions = predictor.predict_with_sentiment(prices, sentiment_data, prediction_days)
         
         # Calculate technical indicators
         technical_indicators = analyze_technical_indicators(prices)

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Line, 
@@ -106,9 +107,9 @@ const ComparativeChart: React.FC<ComparativeChartProps> = ({
   
   // Process API data when it arrives
   useEffect(() => {
-    if (apiData && apiData.predictions && apiData.predictions.length > 0) {
+    if (apiData && (apiData as any).predictions && (apiData as any).predictions.length > 0) {
       // Process and format the data from the API
-      const formattedData: ComparativeDataPoint[] = apiData.predictions.map(item => ({
+      const formattedData: ComparativeDataPoint[] = (apiData as any).predictions.map((item: any) => ({
         date: new Date(item.date).toISOString().split('T')[0],
         price: basePrice, // Use actual price if available in the API response
         technical: item.technicalPrice,
@@ -118,16 +119,16 @@ const ComparativeChart: React.FC<ComparativeChartProps> = ({
       setData(formattedData);
       
       // Set accuracy metrics if available
-      if (apiData.technicalAccuracy !== undefined && 
-          apiData.sentimentAccuracy !== undefined && 
-          apiData.combinedAccuracy !== undefined) {
+      if ((apiData as any).technicalAccuracy !== undefined && 
+          (apiData as any).sentimentAccuracy !== undefined && 
+          (apiData as any).combinedAccuracy !== undefined) {
         setAccuracyMetrics({
-          technical: apiData.technicalAccuracy,
-          sentiment: apiData.sentimentAccuracy,
-          combined: apiData.combinedAccuracy
+          technical: (apiData as any).technicalAccuracy,
+          sentiment: (apiData as any).sentimentAccuracy,
+          combined: (apiData as any).combinedAccuracy
         });
       }
-    } else if (!isLoading && (!apiData || !apiData.predictions || apiData.predictions.length === 0 || error)) {
+    } else if (!isLoading && (!apiData || !(apiData as any).predictions || (apiData as any).predictions?.length === 0 || error)) {
       // Generate mock data if API data is not available
       generateMockData();
     }

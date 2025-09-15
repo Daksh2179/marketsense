@@ -1,0 +1,1717 @@
+{
+  "C:\\Users\\daksh\\Project\\marketsense\\ml-services\\serverless.yml": {
+    "versionFramework": "4.17.2",
+    "servicePath": "C:\\Users\\daksh\\Project\\marketsense\\ml-services\\serverless.yml",
+    "serviceConfigFileName": "serverless.yml",
+    "service": {
+      "service": "marketsense-ml",
+      "frameworkVersion": "4",
+      "provider": {
+        "name": "aws",
+        "runtime": "python3.9",
+        "stage": "prod",
+        "region": "us-east-2",
+        "memorySize": 256,
+        "timeout": 30,
+        "environment": {
+          "DATABASE_URL": "postgresql://postgres:wZYj0Syov5evGKKj@db.vbpryxiikmvryxioeajd.supabase.co:5432/postgres",
+          "ALPHA_VANTAGE_API_KEY": "<REDACTED>",
+          "FINNHUB_API_KEY": "<REDACTED>"
+        },
+        "httpApi": {
+          "cors": true
+        },
+        "versionFunctions": true,
+        "compiledCloudFormationTemplate": {
+          "AWSTemplateFormatVersion": "2010-09-09",
+          "Description": "The AWS CloudFormation template for this Serverless application",
+          "Resources": {
+            "PredictionLogGroup": {
+              "Type": "AWS::Logs::LogGroup",
+              "Properties": {
+                "LogGroupName": "/aws/lambda/marketsense-ml-prod-prediction"
+              }
+            },
+            "SentimentLogGroup": {
+              "Type": "AWS::Logs::LogGroup",
+              "Properties": {
+                "LogGroupName": "/aws/lambda/marketsense-ml-prod-sentiment"
+              }
+            },
+            "IamRoleLambdaExecution": {
+              "Type": "AWS::IAM::Role",
+              "Properties": {
+                "AssumeRolePolicyDocument": {
+                  "Version": "2012-10-17",
+                  "Statement": [
+                    {
+                      "Effect": "Allow",
+                      "Principal": {
+                        "Service": [
+                          "lambda.amazonaws.com"
+                        ]
+                      },
+                      "Action": [
+                        "sts:AssumeRole"
+                      ]
+                    }
+                  ]
+                },
+                "Policies": [
+                  {
+                    "PolicyName": {
+                      "Fn::Join": [
+                        "-",
+                        [
+                          "marketsense-ml",
+                          "prod",
+                          "lambda"
+                        ]
+                      ]
+                    },
+                    "PolicyDocument": {
+                      "Version": "2012-10-17",
+                      "Statement": [
+                        {
+                          "Effect": "Allow",
+                          "Action": [
+                            "logs:CreateLogStream",
+                            "logs:CreateLogGroup",
+                            "logs:TagResource"
+                          ],
+                          "Resource": [
+                            {
+                              "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/marketsense-ml-prod*:*"
+                            }
+                          ]
+                        },
+                        {
+                          "Effect": "Allow",
+                          "Action": [
+                            "logs:PutLogEvents"
+                          ],
+                          "Resource": [
+                            {
+                              "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/marketsense-ml-prod*:*:*"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "Path": "/",
+                "RoleName": {
+                  "Fn::Join": [
+                    "-",
+                    [
+                      "marketsense-ml",
+                      "prod",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      "lambdaRole"
+                    ]
+                  ]
+                }
+              }
+            },
+            "PredictionLambdaFunction": {
+              "Type": "AWS::Lambda::Function",
+              "Properties": {
+                "Code": {
+                  "S3Bucket": "serverless-framework-deployments-us-east-2-b572668b-d3fc",
+                  "S3Key": "serverless/marketsense-ml/prod/1754428635926-2025-08-05T21:17:15.926Z/marketsense-ml.zip"
+                },
+                "Handler": "prediction_lambda.handler",
+                "Runtime": "python3.9",
+                "FunctionName": "marketsense-ml-prod-prediction",
+                "MemorySize": 256,
+                "Timeout": 30,
+                "Environment": {
+                  "Variables": {
+                    "DATABASE_URL": "postgresql://postgres:wZYj0Syov5evGKKj@db.vbpryxiikmvryxioeajd.supabase.co:5432/postgres",
+                    "ALPHA_VANTAGE_API_KEY": "<REDACTED>",
+                    "FINNHUB_API_KEY": "<REDACTED>"
+                  }
+                },
+                "Role": {
+                  "Fn::GetAtt": [
+                    "IamRoleLambdaExecution",
+                    "Arn"
+                  ]
+                }
+              },
+              "DependsOn": [
+                "PredictionLogGroup"
+              ]
+            },
+            "SentimentLambdaFunction": {
+              "Type": "AWS::Lambda::Function",
+              "Properties": {
+                "Code": {
+                  "S3Bucket": "serverless-framework-deployments-us-east-2-b572668b-d3fc",
+                  "S3Key": "serverless/marketsense-ml/prod/1754428635926-2025-08-05T21:17:15.926Z/marketsense-ml.zip"
+                },
+                "Handler": "sentiment_lambda.handler",
+                "Runtime": "python3.9",
+                "FunctionName": "marketsense-ml-prod-sentiment",
+                "MemorySize": 256,
+                "Timeout": 30,
+                "Environment": {
+                  "Variables": {
+                    "DATABASE_URL": "postgresql://postgres:wZYj0Syov5evGKKj@db.vbpryxiikmvryxioeajd.supabase.co:5432/postgres",
+                    "ALPHA_VANTAGE_API_KEY": "<REDACTED>",
+                    "FINNHUB_API_KEY": "<REDACTED>"
+                  }
+                },
+                "Role": {
+                  "Fn::GetAtt": [
+                    "IamRoleLambdaExecution",
+                    "Arn"
+                  ]
+                }
+              },
+              "DependsOn": [
+                "SentimentLogGroup"
+              ]
+            },
+            "PredictionLambdaVersion5iBqpfYvyENTR2hsWzDmRHUzuvU5iMTuzfUjaYKFfM": {
+              "Type": "AWS::Lambda::Version",
+              "DeletionPolicy": "Retain",
+              "Properties": {
+                "FunctionName": {
+                  "Ref": "PredictionLambdaFunction"
+                },
+                "CodeSha256": "D/m43zX/uMMZUnsvy1+uUs75k3lsFJP5YJKCEgmbN8w="
+              }
+            },
+            "SentimentLambdaVersionGukN4NgVTTR768JIqbK2NeE2P8T8vqOCMqVg6mxJo": {
+              "Type": "AWS::Lambda::Version",
+              "DeletionPolicy": "Retain",
+              "Properties": {
+                "FunctionName": {
+                  "Ref": "SentimentLambdaFunction"
+                },
+                "CodeSha256": "D/m43zX/uMMZUnsvy1+uUs75k3lsFJP5YJKCEgmbN8w="
+              }
+            },
+            "HttpApi": {
+              "Type": "AWS::ApiGatewayV2::Api",
+              "Properties": {
+                "Name": "prod-marketsense-ml",
+                "ProtocolType": "HTTP",
+                "CorsConfiguration": {
+                  "AllowCredentials": "<REDACTED>",
+                  "AllowHeaders": [
+                    "Content-Type",
+                    "X-Amz-Date",
+                    "Authorization",
+                    "X-Api-Key",
+                    "X-Amz-Security-Token",
+                    "X-Amz-User-Agent",
+                    "X-Amzn-Trace-Id"
+                  ],
+                  "AllowMethods": [
+                    "OPTIONS",
+                    "POST"
+                  ],
+                  "AllowOrigins": [
+                    "*"
+                  ]
+                }
+              }
+            },
+            "HttpApiStage": {
+              "Type": "AWS::ApiGatewayV2::Stage",
+              "Properties": {
+                "ApiId": {
+                  "Ref": "HttpApi"
+                },
+                "StageName": "$default",
+                "AutoDeploy": true,
+                "DefaultRouteSettings": {
+                  "DetailedMetricsEnabled": false
+                }
+              }
+            },
+            "PredictionLambdaPermissionHttpApi": {
+              "Type": "AWS::Lambda::Permission",
+              "Properties": {
+                "FunctionName": {
+                  "Fn::GetAtt": [
+                    "PredictionLambdaFunction",
+                    "Arn"
+                  ]
+                },
+                "Action": "lambda:InvokeFunction",
+                "Principal": "apigateway.amazonaws.com",
+                "SourceArn": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":execute-api:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":",
+                      {
+                        "Ref": "AWS::AccountId"
+                      },
+                      ":",
+                      {
+                        "Ref": "HttpApi"
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              }
+            },
+            "HttpApiIntegrationPrediction": {
+              "Type": "AWS::ApiGatewayV2::Integration",
+              "Properties": {
+                "ApiId": {
+                  "Ref": "HttpApi"
+                },
+                "IntegrationType": "AWS_PROXY",
+                "IntegrationUri": {
+                  "Fn::GetAtt": [
+                    "PredictionLambdaFunction",
+                    "Arn"
+                  ]
+                },
+                "PayloadFormatVersion": "2.0",
+                "TimeoutInMillis": 30000
+              }
+            },
+            "HttpApiRoutePostMlPrediction": {
+              "Type": "AWS::ApiGatewayV2::Route",
+              "Properties": {
+                "ApiId": {
+                  "Ref": "HttpApi"
+                },
+                "RouteKey": "POST /ml/prediction",
+                "Target": {
+                  "Fn::Join": [
+                    "/",
+                    [
+                      "integrations",
+                      {
+                        "Ref": "HttpApiIntegrationPrediction"
+                      }
+                    ]
+                  ]
+                }
+              },
+              "DependsOn": "HttpApiIntegrationPrediction"
+            },
+            "HttpApiRouteOptionsMlPrediction": {
+              "Type": "AWS::ApiGatewayV2::Route",
+              "Properties": {
+                "ApiId": {
+                  "Ref": "HttpApi"
+                },
+                "RouteKey": "OPTIONS /ml/prediction",
+                "Target": {
+                  "Fn::Join": [
+                    "/",
+                    [
+                      "integrations",
+                      {
+                        "Ref": "HttpApiIntegrationPrediction"
+                      }
+                    ]
+                  ]
+                }
+              },
+              "DependsOn": "HttpApiIntegrationPrediction"
+            },
+            "SentimentLambdaPermissionHttpApi": {
+              "Type": "AWS::Lambda::Permission",
+              "Properties": {
+                "FunctionName": {
+                  "Fn::GetAtt": [
+                    "SentimentLambdaFunction",
+                    "Arn"
+                  ]
+                },
+                "Action": "lambda:InvokeFunction",
+                "Principal": "apigateway.amazonaws.com",
+                "SourceArn": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":execute-api:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":",
+                      {
+                        "Ref": "AWS::AccountId"
+                      },
+                      ":",
+                      {
+                        "Ref": "HttpApi"
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              }
+            },
+            "HttpApiIntegrationSentiment": {
+              "Type": "AWS::ApiGatewayV2::Integration",
+              "Properties": {
+                "ApiId": {
+                  "Ref": "HttpApi"
+                },
+                "IntegrationType": "AWS_PROXY",
+                "IntegrationUri": {
+                  "Fn::GetAtt": [
+                    "SentimentLambdaFunction",
+                    "Arn"
+                  ]
+                },
+                "PayloadFormatVersion": "2.0",
+                "TimeoutInMillis": 30000
+              }
+            },
+            "HttpApiRoutePostMlSentiment": {
+              "Type": "AWS::ApiGatewayV2::Route",
+              "Properties": {
+                "ApiId": {
+                  "Ref": "HttpApi"
+                },
+                "RouteKey": "POST /ml/sentiment",
+                "Target": {
+                  "Fn::Join": [
+                    "/",
+                    [
+                      "integrations",
+                      {
+                        "Ref": "HttpApiIntegrationSentiment"
+                      }
+                    ]
+                  ]
+                }
+              },
+              "DependsOn": "HttpApiIntegrationSentiment"
+            },
+            "HttpApiRouteOptionsMlSentiment": {
+              "Type": "AWS::ApiGatewayV2::Route",
+              "Properties": {
+                "ApiId": {
+                  "Ref": "HttpApi"
+                },
+                "RouteKey": "OPTIONS /ml/sentiment",
+                "Target": {
+                  "Fn::Join": [
+                    "/",
+                    [
+                      "integrations",
+                      {
+                        "Ref": "HttpApiIntegrationSentiment"
+                      }
+                    ]
+                  ]
+                }
+              },
+              "DependsOn": "HttpApiIntegrationSentiment"
+            },
+            "HttpApiRoutePostMlSentimentProxyVar": {
+              "Type": "AWS::ApiGatewayV2::Route",
+              "Properties": {
+                "ApiId": {
+                  "Ref": "HttpApi"
+                },
+                "RouteKey": "POST /ml/sentiment/{proxy+}",
+                "Target": {
+                  "Fn::Join": [
+                    "/",
+                    [
+                      "integrations",
+                      {
+                        "Ref": "HttpApiIntegrationSentiment"
+                      }
+                    ]
+                  ]
+                }
+              },
+              "DependsOn": "HttpApiIntegrationSentiment"
+            },
+            "HttpApiRouteOptionsMlSentimentProxyVar": {
+              "Type": "AWS::ApiGatewayV2::Route",
+              "Properties": {
+                "ApiId": {
+                  "Ref": "HttpApi"
+                },
+                "RouteKey": "OPTIONS /ml/sentiment/{proxy+}",
+                "Target": {
+                  "Fn::Join": [
+                    "/",
+                    [
+                      "integrations",
+                      {
+                        "Ref": "HttpApiIntegrationSentiment"
+                      }
+                    ]
+                  ]
+                }
+              },
+              "DependsOn": "HttpApiIntegrationSentiment"
+            }
+          },
+          "Outputs": {
+            "ServerlessDeploymentBucketName": {
+              "Value": "serverless-framework-deployments-us-east-2-b572668b-d3fc",
+              "Export": {
+                "Name": "sls-marketsense-ml-prod-ServerlessDeploymentBucketName"
+              }
+            },
+            "PredictionLambdaFunctionQualifiedArn": {
+              "Description": "Current Lambda function version",
+              "Value": {
+                "Ref": "PredictionLambdaVersion5iBqpfYvyENTR2hsWzDmRHUzuvU5iMTuzfUjaYKFfM"
+              },
+              "Export": {
+                "Name": "sls-marketsense-ml-prod-PredictionLambdaFunctionQualifiedArn"
+              }
+            },
+            "SentimentLambdaFunctionQualifiedArn": {
+              "Description": "Current Lambda function version",
+              "Value": {
+                "Ref": "SentimentLambdaVersionGukN4NgVTTR768JIqbK2NeE2P8T8vqOCMqVg6mxJo"
+              },
+              "Export": {
+                "Name": "sls-marketsense-ml-prod-SentimentLambdaFunctionQualifiedArn"
+              }
+            },
+            "HttpApiId": {
+              "Description": "Id of the HTTP API",
+              "Value": {
+                "Ref": "HttpApi"
+              },
+              "Export": {
+                "Name": "sls-marketsense-ml-prod-HttpApiId"
+              }
+            },
+            "HttpApiUrl": {
+              "Description": "URL of the HTTP API",
+              "Value": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "https://",
+                    {
+                      "Ref": "HttpApi"
+                    },
+                    ".execute-api.",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ".",
+                    {
+                      "Ref": "AWS::URLSuffix"
+                    }
+                  ]
+                ]
+              },
+              "Export": {
+                "Name": "sls-marketsense-ml-prod-HttpApiUrl"
+              }
+            }
+          }
+        },
+        "vpc": {}
+      },
+      "functions": {
+        "prediction": {
+          "handler": "prediction_lambda.handler",
+          "events": [
+            {
+              "httpApi": {
+                "path": "/ml/prediction",
+                "method": "post"
+              },
+              "resolvedMethod": "POST",
+              "resolvedPath": "/ml/prediction"
+            },
+            {
+              "httpApi": {
+                "path": "/ml/prediction",
+                "method": "options"
+              },
+              "resolvedMethod": "OPTIONS",
+              "resolvedPath": "/ml/prediction"
+            }
+          ],
+          "name": "marketsense-ml-prod-prediction",
+          "package": {},
+          "memory": 256,
+          "timeout": 30,
+          "runtime": "python3.9",
+          "vpc": {},
+          "versionLogicalId": "PredictionLambdaVersion5iBqpfYvyENTR2hsWzDmRHUzuvU5iMTuzfUjaYKFfM"
+        },
+        "sentiment": {
+          "handler": "sentiment_lambda.handler",
+          "events": [
+            {
+              "httpApi": {
+                "path": "/ml/sentiment",
+                "method": "post"
+              },
+              "resolvedMethod": "POST",
+              "resolvedPath": "/ml/sentiment"
+            },
+            {
+              "httpApi": {
+                "path": "/ml/sentiment",
+                "method": "options"
+              },
+              "resolvedMethod": "OPTIONS",
+              "resolvedPath": "/ml/sentiment"
+            },
+            {
+              "httpApi": {
+                "path": "/ml/sentiment/{proxy+}",
+                "method": "post"
+              },
+              "resolvedMethod": "POST",
+              "resolvedPath": "/ml/sentiment/{proxy+}"
+            },
+            {
+              "httpApi": {
+                "path": "/ml/sentiment/{proxy+}",
+                "method": "options"
+              },
+              "resolvedMethod": "OPTIONS",
+              "resolvedPath": "/ml/sentiment/{proxy+}"
+            }
+          ],
+          "name": "marketsense-ml-prod-sentiment",
+          "package": {},
+          "memory": 256,
+          "timeout": 30,
+          "runtime": "python3.9",
+          "vpc": {},
+          "versionLogicalId": "SentimentLambdaVersionGukN4NgVTTR768JIqbK2NeE2P8T8vqOCMqVg6mxJo"
+        }
+      },
+      "package": {
+        "patterns": [
+          "!venv/**",
+          "!__pycache__/**",
+          "!.git/**",
+          "!*.md",
+          "!transformers_layer/**",
+          "!transformers_layer.zip",
+          "!create_layer.py"
+        ],
+        "artifactsS3KeyDirname": "serverless/marketsense-ml/prod/code-artifacts",
+        "deploymentBucket": "serverless-framework-deployments-us-east-2-b572668b-d3fc",
+        "artifact": "C:\\Users\\daksh\\Project\\marketsense\\ml-services\\.serverless\\marketsense-ml.zip",
+        "artifactDirectoryName": "serverless/marketsense-ml/prod/1754428635926-2025-08-05T21:17:15.926Z"
+      }
+    },
+    "provider": {
+      "name": "aws",
+      "runtime": "python3.9",
+      "stage": "prod",
+      "region": "us-east-2",
+      "memorySize": 256,
+      "timeout": 30,
+      "environment": {
+        "DATABASE_URL": "postgresql://postgres:wZYj0Syov5evGKKj@db.vbpryxiikmvryxioeajd.supabase.co:5432/postgres",
+        "ALPHA_VANTAGE_API_KEY": "<REDACTED>",
+        "FINNHUB_API_KEY": "<REDACTED>"
+      },
+      "httpApi": {
+        "cors": true
+      },
+      "versionFunctions": true,
+      "compiledCloudFormationTemplate": {
+        "AWSTemplateFormatVersion": "2010-09-09",
+        "Description": "The AWS CloudFormation template for this Serverless application",
+        "Resources": {
+          "PredictionLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "LogGroupName": "/aws/lambda/marketsense-ml-prod-prediction"
+            }
+          },
+          "SentimentLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "LogGroupName": "/aws/lambda/marketsense-ml-prod-sentiment"
+            }
+          },
+          "IamRoleLambdaExecution": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+              "AssumeRolePolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Principal": {
+                      "Service": [
+                        "lambda.amazonaws.com"
+                      ]
+                    },
+                    "Action": [
+                      "sts:AssumeRole"
+                    ]
+                  }
+                ]
+              },
+              "Policies": [
+                {
+                  "PolicyName": {
+                    "Fn::Join": [
+                      "-",
+                      [
+                        "marketsense-ml",
+                        "prod",
+                        "lambda"
+                      ]
+                    ]
+                  },
+                  "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                      {
+                        "Effect": "Allow",
+                        "Action": [
+                          "logs:CreateLogStream",
+                          "logs:CreateLogGroup",
+                          "logs:TagResource"
+                        ],
+                        "Resource": [
+                          {
+                            "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/marketsense-ml-prod*:*"
+                          }
+                        ]
+                      },
+                      {
+                        "Effect": "Allow",
+                        "Action": [
+                          "logs:PutLogEvents"
+                        ],
+                        "Resource": [
+                          {
+                            "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/marketsense-ml-prod*:*:*"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              ],
+              "Path": "/",
+              "RoleName": {
+                "Fn::Join": [
+                  "-",
+                  [
+                    "marketsense-ml",
+                    "prod",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    "lambdaRole"
+                  ]
+                ]
+              }
+            }
+          },
+          "PredictionLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "Code": {
+                "S3Bucket": "serverless-framework-deployments-us-east-2-b572668b-d3fc",
+                "S3Key": "serverless/marketsense-ml/prod/1754428635926-2025-08-05T21:17:15.926Z/marketsense-ml.zip"
+              },
+              "Handler": "prediction_lambda.handler",
+              "Runtime": "python3.9",
+              "FunctionName": "marketsense-ml-prod-prediction",
+              "MemorySize": 256,
+              "Timeout": 30,
+              "Environment": {
+                "Variables": {
+                  "DATABASE_URL": "postgresql://postgres:wZYj0Syov5evGKKj@db.vbpryxiikmvryxioeajd.supabase.co:5432/postgres",
+                  "ALPHA_VANTAGE_API_KEY": "<REDACTED>",
+                  "FINNHUB_API_KEY": "<REDACTED>"
+                }
+              },
+              "Role": {
+                "Fn::GetAtt": [
+                  "IamRoleLambdaExecution",
+                  "Arn"
+                ]
+              }
+            },
+            "DependsOn": [
+              "PredictionLogGroup"
+            ]
+          },
+          "SentimentLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "Code": {
+                "S3Bucket": "serverless-framework-deployments-us-east-2-b572668b-d3fc",
+                "S3Key": "serverless/marketsense-ml/prod/1754428635926-2025-08-05T21:17:15.926Z/marketsense-ml.zip"
+              },
+              "Handler": "sentiment_lambda.handler",
+              "Runtime": "python3.9",
+              "FunctionName": "marketsense-ml-prod-sentiment",
+              "MemorySize": 256,
+              "Timeout": 30,
+              "Environment": {
+                "Variables": {
+                  "DATABASE_URL": "postgresql://postgres:wZYj0Syov5evGKKj@db.vbpryxiikmvryxioeajd.supabase.co:5432/postgres",
+                  "ALPHA_VANTAGE_API_KEY": "<REDACTED>",
+                  "FINNHUB_API_KEY": "<REDACTED>"
+                }
+              },
+              "Role": {
+                "Fn::GetAtt": [
+                  "IamRoleLambdaExecution",
+                  "Arn"
+                ]
+              }
+            },
+            "DependsOn": [
+              "SentimentLogGroup"
+            ]
+          },
+          "PredictionLambdaVersion5iBqpfYvyENTR2hsWzDmRHUzuvU5iMTuzfUjaYKFfM": {
+            "Type": "AWS::Lambda::Version",
+            "DeletionPolicy": "Retain",
+            "Properties": {
+              "FunctionName": {
+                "Ref": "PredictionLambdaFunction"
+              },
+              "CodeSha256": "D/m43zX/uMMZUnsvy1+uUs75k3lsFJP5YJKCEgmbN8w="
+            }
+          },
+          "SentimentLambdaVersionGukN4NgVTTR768JIqbK2NeE2P8T8vqOCMqVg6mxJo": {
+            "Type": "AWS::Lambda::Version",
+            "DeletionPolicy": "Retain",
+            "Properties": {
+              "FunctionName": {
+                "Ref": "SentimentLambdaFunction"
+              },
+              "CodeSha256": "D/m43zX/uMMZUnsvy1+uUs75k3lsFJP5YJKCEgmbN8w="
+            }
+          },
+          "HttpApi": {
+            "Type": "AWS::ApiGatewayV2::Api",
+            "Properties": {
+              "Name": "prod-marketsense-ml",
+              "ProtocolType": "HTTP",
+              "CorsConfiguration": {
+                "AllowCredentials": "<REDACTED>",
+                "AllowHeaders": [
+                  "Content-Type",
+                  "X-Amz-Date",
+                  "Authorization",
+                  "X-Api-Key",
+                  "X-Amz-Security-Token",
+                  "X-Amz-User-Agent",
+                  "X-Amzn-Trace-Id"
+                ],
+                "AllowMethods": [
+                  "OPTIONS",
+                  "POST"
+                ],
+                "AllowOrigins": [
+                  "*"
+                ]
+              }
+            }
+          },
+          "HttpApiStage": {
+            "Type": "AWS::ApiGatewayV2::Stage",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "StageName": "$default",
+              "AutoDeploy": true,
+              "DefaultRouteSettings": {
+                "DetailedMetricsEnabled": false
+              }
+            }
+          },
+          "PredictionLambdaPermissionHttpApi": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+              "FunctionName": {
+                "Fn::GetAtt": [
+                  "PredictionLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "Action": "lambda:InvokeFunction",
+              "Principal": "apigateway.amazonaws.com",
+              "SourceArn": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":execute-api:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":",
+                    {
+                      "Ref": "HttpApi"
+                    },
+                    "/*"
+                  ]
+                ]
+              }
+            }
+          },
+          "HttpApiIntegrationPrediction": {
+            "Type": "AWS::ApiGatewayV2::Integration",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "IntegrationType": "AWS_PROXY",
+              "IntegrationUri": {
+                "Fn::GetAtt": [
+                  "PredictionLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "PayloadFormatVersion": "2.0",
+              "TimeoutInMillis": 30000
+            }
+          },
+          "HttpApiRoutePostMlPrediction": {
+            "Type": "AWS::ApiGatewayV2::Route",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "RouteKey": "POST /ml/prediction",
+              "Target": {
+                "Fn::Join": [
+                  "/",
+                  [
+                    "integrations",
+                    {
+                      "Ref": "HttpApiIntegrationPrediction"
+                    }
+                  ]
+                ]
+              }
+            },
+            "DependsOn": "HttpApiIntegrationPrediction"
+          },
+          "HttpApiRouteOptionsMlPrediction": {
+            "Type": "AWS::ApiGatewayV2::Route",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "RouteKey": "OPTIONS /ml/prediction",
+              "Target": {
+                "Fn::Join": [
+                  "/",
+                  [
+                    "integrations",
+                    {
+                      "Ref": "HttpApiIntegrationPrediction"
+                    }
+                  ]
+                ]
+              }
+            },
+            "DependsOn": "HttpApiIntegrationPrediction"
+          },
+          "SentimentLambdaPermissionHttpApi": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+              "FunctionName": {
+                "Fn::GetAtt": [
+                  "SentimentLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "Action": "lambda:InvokeFunction",
+              "Principal": "apigateway.amazonaws.com",
+              "SourceArn": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":execute-api:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":",
+                    {
+                      "Ref": "HttpApi"
+                    },
+                    "/*"
+                  ]
+                ]
+              }
+            }
+          },
+          "HttpApiIntegrationSentiment": {
+            "Type": "AWS::ApiGatewayV2::Integration",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "IntegrationType": "AWS_PROXY",
+              "IntegrationUri": {
+                "Fn::GetAtt": [
+                  "SentimentLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "PayloadFormatVersion": "2.0",
+              "TimeoutInMillis": 30000
+            }
+          },
+          "HttpApiRoutePostMlSentiment": {
+            "Type": "AWS::ApiGatewayV2::Route",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "RouteKey": "POST /ml/sentiment",
+              "Target": {
+                "Fn::Join": [
+                  "/",
+                  [
+                    "integrations",
+                    {
+                      "Ref": "HttpApiIntegrationSentiment"
+                    }
+                  ]
+                ]
+              }
+            },
+            "DependsOn": "HttpApiIntegrationSentiment"
+          },
+          "HttpApiRouteOptionsMlSentiment": {
+            "Type": "AWS::ApiGatewayV2::Route",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "RouteKey": "OPTIONS /ml/sentiment",
+              "Target": {
+                "Fn::Join": [
+                  "/",
+                  [
+                    "integrations",
+                    {
+                      "Ref": "HttpApiIntegrationSentiment"
+                    }
+                  ]
+                ]
+              }
+            },
+            "DependsOn": "HttpApiIntegrationSentiment"
+          },
+          "HttpApiRoutePostMlSentimentProxyVar": {
+            "Type": "AWS::ApiGatewayV2::Route",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "RouteKey": "POST /ml/sentiment/{proxy+}",
+              "Target": {
+                "Fn::Join": [
+                  "/",
+                  [
+                    "integrations",
+                    {
+                      "Ref": "HttpApiIntegrationSentiment"
+                    }
+                  ]
+                ]
+              }
+            },
+            "DependsOn": "HttpApiIntegrationSentiment"
+          },
+          "HttpApiRouteOptionsMlSentimentProxyVar": {
+            "Type": "AWS::ApiGatewayV2::Route",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "RouteKey": "OPTIONS /ml/sentiment/{proxy+}",
+              "Target": {
+                "Fn::Join": [
+                  "/",
+                  [
+                    "integrations",
+                    {
+                      "Ref": "HttpApiIntegrationSentiment"
+                    }
+                  ]
+                ]
+              }
+            },
+            "DependsOn": "HttpApiIntegrationSentiment"
+          }
+        },
+        "Outputs": {
+          "ServerlessDeploymentBucketName": {
+            "Value": "serverless-framework-deployments-us-east-2-b572668b-d3fc",
+            "Export": {
+              "Name": "sls-marketsense-ml-prod-ServerlessDeploymentBucketName"
+            }
+          },
+          "PredictionLambdaFunctionQualifiedArn": {
+            "Description": "Current Lambda function version",
+            "Value": {
+              "Ref": "PredictionLambdaVersion5iBqpfYvyENTR2hsWzDmRHUzuvU5iMTuzfUjaYKFfM"
+            },
+            "Export": {
+              "Name": "sls-marketsense-ml-prod-PredictionLambdaFunctionQualifiedArn"
+            }
+          },
+          "SentimentLambdaFunctionQualifiedArn": {
+            "Description": "Current Lambda function version",
+            "Value": {
+              "Ref": "SentimentLambdaVersionGukN4NgVTTR768JIqbK2NeE2P8T8vqOCMqVg6mxJo"
+            },
+            "Export": {
+              "Name": "sls-marketsense-ml-prod-SentimentLambdaFunctionQualifiedArn"
+            }
+          },
+          "HttpApiId": {
+            "Description": "Id of the HTTP API",
+            "Value": {
+              "Ref": "HttpApi"
+            },
+            "Export": {
+              "Name": "sls-marketsense-ml-prod-HttpApiId"
+            }
+          },
+          "HttpApiUrl": {
+            "Description": "URL of the HTTP API",
+            "Value": {
+              "Fn::Join": [
+                "",
+                [
+                  "https://",
+                  {
+                    "Ref": "HttpApi"
+                  },
+                  ".execute-api.",
+                  {
+                    "Ref": "AWS::Region"
+                  },
+                  ".",
+                  {
+                    "Ref": "AWS::URLSuffix"
+                  }
+                ]
+              ]
+            },
+            "Export": {
+              "Name": "sls-marketsense-ml-prod-HttpApiUrl"
+            }
+          }
+        }
+      },
+      "vpc": {}
+    },
+    "dashboard": {
+      "isEnabledForService": false,
+      "requiredAuthentication": false,
+      "orgFeaturesInUse": null,
+      "orgObservabilityIntegrations": null,
+      "serviceAppId": null,
+      "serviceProvider": null,
+      "instanceParameters": null
+    },
+    "serviceRawFile": "service: marketsense-ml\r\n\r\nframeworkVersion: '4'\r\n\r\nprovider:\r\n  name: aws\r\n  runtime: python3.9\r\n  stage: prod\r\n  region: us-east-2\r\n  memorySize: 256\r\n  timeout: 30\r\n  environment:\r\n    DATABASE_URL: postgresql://postgres:wZYj0Syov5evGKKj@db.vbpryxiikmvryxioeajd.supabase.co:5432/postgres\r\n    ALPHA_VANTAGE_API_KEY: HPHZXH2TP5SHDA62\r\n    FINNHUB_API_KEY: d05t3ohr01qgqsu9dg60d05t3ohr01qgqsu9dg6g\r\n  httpApi:\r\n    cors: true\r\n\r\nfunctions:\r\n  prediction:\r\n    handler: prediction_lambda.handler\r\n    events:\r\n      - httpApi:\r\n          path: /ml/prediction\r\n          method: post\r\n      - httpApi:\r\n          path: /ml/prediction\r\n          method: options\r\n  sentiment:\r\n    handler: sentiment_lambda.handler\r\n    events:\r\n      - httpApi:\r\n          path: /ml/sentiment\r\n          method: post\r\n      - httpApi:\r\n          path: /ml/sentiment\r\n          method: options\r\n      - httpApi:\r\n          path: /ml/sentiment/{proxy+}\r\n          method: post\r\n      - httpApi:\r\n          path: /ml/sentiment/{proxy+}\r\n          method: options\r\n\r\npackage:\r\n  patterns:\r\n    - '!venv/**'\r\n    - '!__pycache__/**'\r\n    - '!.git/**'\r\n    - '!*.md'\r\n    - '!transformers_layer/**'\r\n    - '!transformers_layer.zip'\r\n    - '!create_layer.py'",
+    "command": [
+      "deploy"
+    ],
+    "options": {},
+    "orgId": "0d9499bd-5783-4495-9d43-3396db17734c",
+    "orgName": "marketsense",
+    "userId": "1d2lRB81BTJ8Sgnhfn",
+    "userName": "marketsense",
+    "serviceProviderAwsAccountId": "339713056999",
+    "serviceProviderAwsCfStackName": "marketsense-ml-prod",
+    "serviceProviderAwsCfStackId": "arn:aws:cloudformation:us-east-2:339713056999:stack/marketsense-ml-prod/933fd480-7241-11f0-bbd1-0274fbaad4ff",
+    "serviceProviderAwsCfStackCreated": "2025-08-05T21:17:21.852Z",
+    "serviceProviderAwsCfStackUpdated": null,
+    "serviceProviderAwsCfStackStatus": "CREATE_COMPLETE",
+    "serviceProviderAwsCfStackOutputs": [
+      {
+        "OutputKey": "SentimentLambdaFunctionQualifiedArn",
+        "OutputValue": "arn:aws:lambda:us-east-2:339713056999:function:marketsense-ml-prod-sentiment:1",
+        "Description": "Current Lambda function version",
+        "ExportName": "sls-marketsense-ml-prod-SentimentLambdaFunctionQualifiedArn"
+      },
+      {
+        "OutputKey": "PredictionLambdaFunctionQualifiedArn",
+        "OutputValue": "arn:aws:lambda:us-east-2:339713056999:function:marketsense-ml-prod-prediction:1",
+        "Description": "Current Lambda function version",
+        "ExportName": "sls-marketsense-ml-prod-PredictionLambdaFunctionQualifiedArn"
+      },
+      {
+        "OutputKey": "HttpApiId",
+        "OutputValue": "dxz93gy0re",
+        "Description": "Id of the HTTP API",
+        "ExportName": "sls-marketsense-ml-prod-HttpApiId"
+      },
+      {
+        "OutputKey": "ServerlessDeploymentBucketName",
+        "OutputValue": "serverless-framework-deployments-us-east-2-b572668b-d3fc",
+        "ExportName": "sls-marketsense-ml-prod-ServerlessDeploymentBucketName"
+      },
+      {
+        "OutputKey": "HttpApiUrl",
+        "OutputValue": "https://dxz93gy0re.execute-api.us-east-2.amazonaws.com",
+        "Description": "URL of the HTTP API",
+        "ExportName": "sls-marketsense-ml-prod-HttpApiUrl"
+      }
+    ],
+    "compiledCloudFormationTemplate": {
+      "AWSTemplateFormatVersion": "2010-09-09",
+      "Description": "The AWS CloudFormation template for this Serverless application",
+      "Resources": {
+        "PredictionLogGroup": {
+          "Type": "AWS::Logs::LogGroup",
+          "Properties": {
+            "LogGroupName": "/aws/lambda/marketsense-ml-prod-prediction"
+          }
+        },
+        "SentimentLogGroup": {
+          "Type": "AWS::Logs::LogGroup",
+          "Properties": {
+            "LogGroupName": "/aws/lambda/marketsense-ml-prod-sentiment"
+          }
+        },
+        "IamRoleLambdaExecution": {
+          "Type": "AWS::IAM::Role",
+          "Properties": {
+            "AssumeRolePolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Principal": {
+                    "Service": [
+                      "lambda.amazonaws.com"
+                    ]
+                  },
+                  "Action": [
+                    "sts:AssumeRole"
+                  ]
+                }
+              ]
+            },
+            "Policies": [
+              {
+                "PolicyName": {
+                  "Fn::Join": [
+                    "-",
+                    [
+                      "marketsense-ml",
+                      "prod",
+                      "lambda"
+                    ]
+                  ]
+                },
+                "PolicyDocument": {
+                  "Version": "2012-10-17",
+                  "Statement": [
+                    {
+                      "Effect": "Allow",
+                      "Action": [
+                        "logs:CreateLogStream",
+                        "logs:CreateLogGroup",
+                        "logs:TagResource"
+                      ],
+                      "Resource": [
+                        {
+                          "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/marketsense-ml-prod*:*"
+                        }
+                      ]
+                    },
+                    {
+                      "Effect": "Allow",
+                      "Action": [
+                        "logs:PutLogEvents"
+                      ],
+                      "Resource": [
+                        {
+                          "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/marketsense-ml-prod*:*:*"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            ],
+            "Path": "/",
+            "RoleName": {
+              "Fn::Join": [
+                "-",
+                [
+                  "marketsense-ml",
+                  "prod",
+                  {
+                    "Ref": "AWS::Region"
+                  },
+                  "lambdaRole"
+                ]
+              ]
+            }
+          }
+        },
+        "PredictionLambdaFunction": {
+          "Type": "AWS::Lambda::Function",
+          "Properties": {
+            "Code": {
+              "S3Bucket": "serverless-framework-deployments-us-east-2-b572668b-d3fc",
+              "S3Key": "serverless/marketsense-ml/prod/1754428635926-2025-08-05T21:17:15.926Z/marketsense-ml.zip"
+            },
+            "Handler": "prediction_lambda.handler",
+            "Runtime": "python3.9",
+            "FunctionName": "marketsense-ml-prod-prediction",
+            "MemorySize": 256,
+            "Timeout": 30,
+            "Environment": {
+              "Variables": {
+                "DATABASE_URL": "postgresql://postgres:wZYj0Syov5evGKKj@db.vbpryxiikmvryxioeajd.supabase.co:5432/postgres",
+                "ALPHA_VANTAGE_API_KEY": "<REDACTED>",
+                "FINNHUB_API_KEY": "<REDACTED>"
+              }
+            },
+            "Role": {
+              "Fn::GetAtt": [
+                "IamRoleLambdaExecution",
+                "Arn"
+              ]
+            }
+          },
+          "DependsOn": [
+            "PredictionLogGroup"
+          ]
+        },
+        "SentimentLambdaFunction": {
+          "Type": "AWS::Lambda::Function",
+          "Properties": {
+            "Code": {
+              "S3Bucket": "serverless-framework-deployments-us-east-2-b572668b-d3fc",
+              "S3Key": "serverless/marketsense-ml/prod/1754428635926-2025-08-05T21:17:15.926Z/marketsense-ml.zip"
+            },
+            "Handler": "sentiment_lambda.handler",
+            "Runtime": "python3.9",
+            "FunctionName": "marketsense-ml-prod-sentiment",
+            "MemorySize": 256,
+            "Timeout": 30,
+            "Environment": {
+              "Variables": {
+                "DATABASE_URL": "postgresql://postgres:wZYj0Syov5evGKKj@db.vbpryxiikmvryxioeajd.supabase.co:5432/postgres",
+                "ALPHA_VANTAGE_API_KEY": "<REDACTED>",
+                "FINNHUB_API_KEY": "<REDACTED>"
+              }
+            },
+            "Role": {
+              "Fn::GetAtt": [
+                "IamRoleLambdaExecution",
+                "Arn"
+              ]
+            }
+          },
+          "DependsOn": [
+            "SentimentLogGroup"
+          ]
+        },
+        "PredictionLambdaVersion5iBqpfYvyENTR2hsWzDmRHUzuvU5iMTuzfUjaYKFfM": {
+          "Type": "AWS::Lambda::Version",
+          "DeletionPolicy": "Retain",
+          "Properties": {
+            "FunctionName": {
+              "Ref": "PredictionLambdaFunction"
+            },
+            "CodeSha256": "D/m43zX/uMMZUnsvy1+uUs75k3lsFJP5YJKCEgmbN8w="
+          }
+        },
+        "SentimentLambdaVersionGukN4NgVTTR768JIqbK2NeE2P8T8vqOCMqVg6mxJo": {
+          "Type": "AWS::Lambda::Version",
+          "DeletionPolicy": "Retain",
+          "Properties": {
+            "FunctionName": {
+              "Ref": "SentimentLambdaFunction"
+            },
+            "CodeSha256": "D/m43zX/uMMZUnsvy1+uUs75k3lsFJP5YJKCEgmbN8w="
+          }
+        },
+        "HttpApi": {
+          "Type": "AWS::ApiGatewayV2::Api",
+          "Properties": {
+            "Name": "prod-marketsense-ml",
+            "ProtocolType": "HTTP",
+            "CorsConfiguration": {
+              "AllowHeaders": [
+                "Content-Type",
+                "X-Amz-Date",
+                "Authorization",
+                "X-Api-Key",
+                "X-Amz-Security-Token",
+                "X-Amz-User-Agent",
+                "X-Amzn-Trace-Id"
+              ],
+              "AllowMethods": [
+                "OPTIONS",
+                "POST"
+              ],
+              "AllowOrigins": [
+                "*"
+              ]
+            }
+          }
+        },
+        "HttpApiStage": {
+          "Type": "AWS::ApiGatewayV2::Stage",
+          "Properties": {
+            "ApiId": {
+              "Ref": "HttpApi"
+            },
+            "StageName": "$default",
+            "AutoDeploy": true,
+            "DefaultRouteSettings": {
+              "DetailedMetricsEnabled": false
+            }
+          }
+        },
+        "PredictionLambdaPermissionHttpApi": {
+          "Type": "AWS::Lambda::Permission",
+          "Properties": {
+            "FunctionName": {
+              "Fn::GetAtt": [
+                "PredictionLambdaFunction",
+                "Arn"
+              ]
+            },
+            "Action": "lambda:InvokeFunction",
+            "Principal": "apigateway.amazonaws.com",
+            "SourceArn": {
+              "Fn::Join": [
+                "",
+                [
+                  "arn:",
+                  {
+                    "Ref": "AWS::Partition"
+                  },
+                  ":execute-api:",
+                  {
+                    "Ref": "AWS::Region"
+                  },
+                  ":",
+                  {
+                    "Ref": "AWS::AccountId"
+                  },
+                  ":",
+                  {
+                    "Ref": "HttpApi"
+                  },
+                  "/*"
+                ]
+              ]
+            }
+          }
+        },
+        "HttpApiIntegrationPrediction": {
+          "Type": "AWS::ApiGatewayV2::Integration",
+          "Properties": {
+            "ApiId": {
+              "Ref": "HttpApi"
+            },
+            "IntegrationType": "AWS_PROXY",
+            "IntegrationUri": {
+              "Fn::GetAtt": [
+                "PredictionLambdaFunction",
+                "Arn"
+              ]
+            },
+            "PayloadFormatVersion": "2.0",
+            "TimeoutInMillis": 30000
+          }
+        },
+        "HttpApiRoutePostMlPrediction": {
+          "Type": "AWS::ApiGatewayV2::Route",
+          "Properties": {
+            "ApiId": {
+              "Ref": "HttpApi"
+            },
+            "RouteKey": "POST /ml/prediction",
+            "Target": {
+              "Fn::Join": [
+                "/",
+                [
+                  "integrations",
+                  {
+                    "Ref": "HttpApiIntegrationPrediction"
+                  }
+                ]
+              ]
+            }
+          },
+          "DependsOn": "HttpApiIntegrationPrediction"
+        },
+        "HttpApiRouteOptionsMlPrediction": {
+          "Type": "AWS::ApiGatewayV2::Route",
+          "Properties": {
+            "ApiId": {
+              "Ref": "HttpApi"
+            },
+            "RouteKey": "OPTIONS /ml/prediction",
+            "Target": {
+              "Fn::Join": [
+                "/",
+                [
+                  "integrations",
+                  {
+                    "Ref": "HttpApiIntegrationPrediction"
+                  }
+                ]
+              ]
+            }
+          },
+          "DependsOn": "HttpApiIntegrationPrediction"
+        },
+        "SentimentLambdaPermissionHttpApi": {
+          "Type": "AWS::Lambda::Permission",
+          "Properties": {
+            "FunctionName": {
+              "Fn::GetAtt": [
+                "SentimentLambdaFunction",
+                "Arn"
+              ]
+            },
+            "Action": "lambda:InvokeFunction",
+            "Principal": "apigateway.amazonaws.com",
+            "SourceArn": {
+              "Fn::Join": [
+                "",
+                [
+                  "arn:",
+                  {
+                    "Ref": "AWS::Partition"
+                  },
+                  ":execute-api:",
+                  {
+                    "Ref": "AWS::Region"
+                  },
+                  ":",
+                  {
+                    "Ref": "AWS::AccountId"
+                  },
+                  ":",
+                  {
+                    "Ref": "HttpApi"
+                  },
+                  "/*"
+                ]
+              ]
+            }
+          }
+        },
+        "HttpApiIntegrationSentiment": {
+          "Type": "AWS::ApiGatewayV2::Integration",
+          "Properties": {
+            "ApiId": {
+              "Ref": "HttpApi"
+            },
+            "IntegrationType": "AWS_PROXY",
+            "IntegrationUri": {
+              "Fn::GetAtt": [
+                "SentimentLambdaFunction",
+                "Arn"
+              ]
+            },
+            "PayloadFormatVersion": "2.0",
+            "TimeoutInMillis": 30000
+          }
+        },
+        "HttpApiRoutePostMlSentiment": {
+          "Type": "AWS::ApiGatewayV2::Route",
+          "Properties": {
+            "ApiId": {
+              "Ref": "HttpApi"
+            },
+            "RouteKey": "POST /ml/sentiment",
+            "Target": {
+              "Fn::Join": [
+                "/",
+                [
+                  "integrations",
+                  {
+                    "Ref": "HttpApiIntegrationSentiment"
+                  }
+                ]
+              ]
+            }
+          },
+          "DependsOn": "HttpApiIntegrationSentiment"
+        },
+        "HttpApiRouteOptionsMlSentiment": {
+          "Type": "AWS::ApiGatewayV2::Route",
+          "Properties": {
+            "ApiId": {
+              "Ref": "HttpApi"
+            },
+            "RouteKey": "OPTIONS /ml/sentiment",
+            "Target": {
+              "Fn::Join": [
+                "/",
+                [
+                  "integrations",
+                  {
+                    "Ref": "HttpApiIntegrationSentiment"
+                  }
+                ]
+              ]
+            }
+          },
+          "DependsOn": "HttpApiIntegrationSentiment"
+        },
+        "HttpApiRoutePostMlSentimentProxyVar": {
+          "Type": "AWS::ApiGatewayV2::Route",
+          "Properties": {
+            "ApiId": {
+              "Ref": "HttpApi"
+            },
+            "RouteKey": "POST /ml/sentiment/{proxy+}",
+            "Target": {
+              "Fn::Join": [
+                "/",
+                [
+                  "integrations",
+                  {
+                    "Ref": "HttpApiIntegrationSentiment"
+                  }
+                ]
+              ]
+            }
+          },
+          "DependsOn": "HttpApiIntegrationSentiment"
+        },
+        "HttpApiRouteOptionsMlSentimentProxyVar": {
+          "Type": "AWS::ApiGatewayV2::Route",
+          "Properties": {
+            "ApiId": {
+              "Ref": "HttpApi"
+            },
+            "RouteKey": "OPTIONS /ml/sentiment/{proxy+}",
+            "Target": {
+              "Fn::Join": [
+                "/",
+                [
+                  "integrations",
+                  {
+                    "Ref": "HttpApiIntegrationSentiment"
+                  }
+                ]
+              ]
+            }
+          },
+          "DependsOn": "HttpApiIntegrationSentiment"
+        }
+      },
+      "Outputs": {
+        "ServerlessDeploymentBucketName": {
+          "Value": "serverless-framework-deployments-us-east-2-b572668b-d3fc",
+          "Export": {
+            "Name": "sls-marketsense-ml-prod-ServerlessDeploymentBucketName"
+          }
+        },
+        "PredictionLambdaFunctionQualifiedArn": {
+          "Description": "Current Lambda function version",
+          "Value": {
+            "Ref": "PredictionLambdaVersion5iBqpfYvyENTR2hsWzDmRHUzuvU5iMTuzfUjaYKFfM"
+          },
+          "Export": {
+            "Name": "sls-marketsense-ml-prod-PredictionLambdaFunctionQualifiedArn"
+          }
+        },
+        "SentimentLambdaFunctionQualifiedArn": {
+          "Description": "Current Lambda function version",
+          "Value": {
+            "Ref": "SentimentLambdaVersionGukN4NgVTTR768JIqbK2NeE2P8T8vqOCMqVg6mxJo"
+          },
+          "Export": {
+            "Name": "sls-marketsense-ml-prod-SentimentLambdaFunctionQualifiedArn"
+          }
+        },
+        "HttpApiId": {
+          "Description": "Id of the HTTP API",
+          "Value": {
+            "Ref": "HttpApi"
+          },
+          "Export": {
+            "Name": "sls-marketsense-ml-prod-HttpApiId"
+          }
+        },
+        "HttpApiUrl": {
+          "Description": "URL of the HTTP API",
+          "Value": {
+            "Fn::Join": [
+              "",
+              [
+                "https://",
+                {
+                  "Ref": "HttpApi"
+                },
+                ".execute-api.",
+                {
+                  "Ref": "AWS::Region"
+                },
+                ".",
+                {
+                  "Ref": "AWS::URLSuffix"
+                }
+              ]
+            ]
+          },
+          "Export": {
+            "Name": "sls-marketsense-ml-prod-HttpApiUrl"
+          }
+        }
+      }
+    }
+  }
+}

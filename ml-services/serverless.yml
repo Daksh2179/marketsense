@@ -1,0 +1,53 @@
+service: marketsense-ml
+
+frameworkVersion: '4'
+
+provider:
+  name: aws
+  runtime: python3.9
+  stage: prod
+  region: us-east-2
+  memorySize: 256
+  timeout: 30
+  environment:
+    DATABASE_URL: postgresql://postgres:4DiGYpJZir1Uv8Ga@db.vbpryxiikmvryxioeajd.supabase.co:5432/postgres
+    ALPHA_VANTAGE_API_KEY: HPHZXH2TP5SHDA62
+    FINNHUB_API_KEY: d05t3ohr01qgqsu9dg60d05t3ohr01qgqsu9dg6g
+  httpApi:
+    cors: true
+
+functions:
+  prediction:
+    handler: prediction_lambda.handler
+    events:
+      - httpApi:
+          path: /ml/prediction
+          method: post
+      - httpApi:
+          path: /ml/prediction
+          method: options
+  sentiment:
+    handler: sentiment_lambda.handler
+    events:
+      - httpApi:
+          path: /ml/sentiment
+          method: post
+      - httpApi:
+          path: /ml/sentiment
+          method: options
+      - httpApi:
+          path: /ml/sentiment/{proxy+}
+          method: post
+      - httpApi:
+          path: /ml/sentiment/{proxy+}
+          method: options
+
+package:
+  patterns:
+    - '!venv/**'
+    - '!__pycache__/**'
+    - '!.git/**'
+    - '!*.md'
+    - '!transformers_layer/**'
+    - '!transformers_layer.zip'
+    - '!create_layer.py'

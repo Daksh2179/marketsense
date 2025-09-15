@@ -1,30 +1,156 @@
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-from transformers import pipeline, AutoTokenizer, AutoModelForSequenceClassification
+import json
+import numpy as np
+import pandas as pd
+import logging
+from datetime import datetime, timedelta
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
-import numpy as np
-import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
-import logging
-import os
-from datetime import datetime, timedelta
-import json
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = Flask(__name__)
-
-# Enable CORS for all routes
-CORS(app, origins=['http://localhost:3000', 'http://localhost:3001', 'https://hoppscotch.io'])
-
-# Global variables for models
-sentiment_pipeline = None
-tokenizer = None
-model = None
+# Lambda handler function for AWS Lambda deployment
+def handler(event, context):
+    try:
+        # Parse input from API Gateway
+        body = json.loads(event.get('body', '{}')) if event.get('body') else {}
+        
+        # Check which endpoint is being called based on path parameter
+        path = event.get('pathParameters', {}).get('proxy', '') or event.get('path', '').split('/')[-1]
+        
+        # Handle different endpoints
+        if path == 'analyze-sentiment' or 'headlines' in body:
+            # Sentiment analysis endpoint
+            headlines = body.get('headlines', [])
+            
+            if not headlines or not isinstance(headlines, list):
+                return {
+                    'statusCode': 400,
+                    'headers': {
+                        'Access-Control-Allow-Origin': '*',
+                        'Content-Type': 'application/json'
+                    },
+                    'body': json.dumps({
+                        'error': 'Valid headlines array required',
+                        'success': False
+                    })
+                }
+            
+            # Generate simple demo sentiment analysis (since we can't load the full FinBERT model in Lambda)
+            results = []
+            total_score = 0
+            
+            for headline in headlines[:20]:
+                if not headline or not isinstance(headline, str):
+                    continue
+                    
+                # Simple sentiment scoring based on keyword presence
+                score = 0
+                if any(word in headline.lower() for word in ['growth', 'profit', 'rise', 'gain', 'positive', 'up']):
+                    score = 0.5
+                elif any(word in headline.lower() for word in ['drop', 'fall', 'loss', 'negative', 'down', 'concern']):
+                    score = -0.5
+                
+                label = 'positive' if score > 0 else 'negative' if score < 0 else 'neutral'
+                confidence = abs(score) + 0.3
+                
+                results.append({
+                    'headline': headline,
+                    'sentiment_score': score,
+                    'label': label,
+                    'confidence': confidence
+                })
+                
+                total_score += score
+            
+            overall_sentiment = total_score / len(results) if results else 0.0
+            
+            # Categorize headlines
+            positive_headlines = [r for r in results if r['sentiment_score'] > 0]
+            negative_headlines = [r for r in results if r['sentiment_score'] < 0]
+            neutral_headlines = [r for r in results if r['sentiment_score'] == 0]
+            
+            response = {
+                'overall_sentiment': round(overall_sentiment, 3),
+                'headline_results': results,
+                'positive_count': len(positive_headlines),
+                'negative_count': len(negative_headlines),
+                'neutral_count': len(neutral_headlines),
+                'timestamp': datetime.now().isoformat(),
+                'success': True
+            }
+            
+        elif path == 'analyze-single' or 'text' in body:
+            # Single headline analysis
+            text = body.get('text', '')
+            
+            if not text or not isinstance(text, str):
+                return {
+                    'statusCode': 400,
+                    'headers': {
+                        'Access-Control-Allow-Origin': '*',
+                        'Content-Type': 'application/json'
+                    },
+                    'body': json.dumps({
+                        'error': 'Valid text string required',
+                        'success': False
+                    })
+                }
+            
+            # Simple sentiment analysis
+            score = 0
+            if any(word in text.lower() for word in ['growth', 'profit', 'rise', 'gain', 'positive', 'up']):
+                score = 0.5
+            elif any(word in text.lower() for word in ['drop', 'fall', 'loss', 'negative', 'down', 'concern']):
+                score = -0.5
+            
+            label = 'positive' if score > 0 else 'negative' if score < 0 else 'neutral'
+            confidence = abs(score) + 0.3
+            
+            response = {
+                'text': text,
+                'sentiment_score': score,
+                'label': label,
+                'confidence': confidence,
+                'timestamp': datetime.now().isoformat(),
+                'success': True
+            }
+            
+        else:
+            # Default to health check
+            response = {
+                'status': 'healthy',
+                'sentiment_service': 'online',
+                'timestamp': datetime.now().isoformat(),
+                'success': True
+            }
+        
+        # Return successful response
+        return {
+            'statusCode': 200,
+            'headers': {
+                'Access-Control-Allow-Origin': '*',
+                'Content-Type': 'application/json'
+            },
+            'body': json.dumps(response)
+        }
+        
+    except Exception as e:
+        # Return error response
+        return {
+            'statusCode': 500,
+            'headers': {
+                'Access-Control-Allow-Origin': '*',
+                'Content-Type': 'application/json'
+            },
+            'body': json.dumps({
+                'error': str(e),
+                'success': False
+            })
+        }
 
 class SentimentEnhancedLSTM(nn.Module):
     """
@@ -421,61 +547,25 @@ class AdvancedStockPredictor:
             logger.error(f"Error calculating enhanced confidence: {str(e)}")
             return 60.0
 
-def initialize_models():
-    """Initialize FinBERT model for financial sentiment analysis"""
-    global sentiment_pipeline, tokenizer, model
-    
-    try:
-        logger.info("Loading FinBERT model for financial sentiment analysis...")
-        
-        # Use ProsusAI/finbert - specifically trained for financial text
-        model_name = "ProsusAI/finbert"
-        
-        # Load tokenizer and model
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
-        model = AutoModelForSequenceClassification.from_pretrained(model_name)
-        
-        # Create pipeline
-        sentiment_pipeline = pipeline(
-            "sentiment-analysis",
-            model=model,
-            tokenizer=tokenizer,
-            device=0 if torch.cuda.is_available() else -1
-        )
-        
-        logger.info("✅ FinBERT model loaded successfully!")
-        return True
-        
-    except Exception as e:
-        logger.error(f"❌ Error loading FinBERT model: {str(e)}")
-        return False
-
 def analyze_financial_sentiment(text):
     """
-    Analyze sentiment of financial text using FinBERT
+    Simple sentiment analysis function (replaces FinBERT for Lambda compatibility)
     """
     try:
-        if not sentiment_pipeline:
-            raise Exception("Sentiment model not initialized")
+        # Simple sentiment scoring based on keyword presence
+        score = 0
+        if any(word in text.lower() for word in ['growth', 'profit', 'rise', 'gain', 'positive', 'up']):
+            score = 0.5
+        elif any(word in text.lower() for word in ['drop', 'fall', 'loss', 'negative', 'down', 'concern']):
+            score = -0.5
         
-        cleaned_text = text.strip()[:512]
-        result = sentiment_pipeline(cleaned_text)[0]
-        
-        label = result['label'].lower()
-        confidence = result['score']
-        
-        if label == 'positive':
-            sentiment_score = confidence
-        elif label == 'negative':
-            sentiment_score = -confidence
-        else:  # neutral
-            sentiment_score = 0.0
+        label = 'positive' if score > 0 else 'negative' if score < 0 else 'neutral'
+        confidence = abs(score) + 0.3
         
         return {
-            'score': round(sentiment_score, 3),
+            'score': round(score, 3),
             'label': label,
-            'confidence': round(confidence, 3),
-            'raw_result': result
+            'confidence': round(confidence, 3)
         }
         
     except Exception as e:
@@ -663,247 +753,3 @@ def train_and_predict_enhanced(ticker, price_data, sentiment_data, prediction_da
             'error': str(e),
             'success': False
         }
-
-# Flask Routes
-@app.route('/health', methods=['GET'])
-def health_check():
-    """Health check endpoint"""
-    status = "healthy" if sentiment_pipeline else "unhealthy"
-    return jsonify({
-        'status': status,
-        'model_loaded': sentiment_pipeline is not None,
-        'gpu_available': torch.cuda.is_available(),
-        'enhanced_lstm_available': True,
-        'timestamp': datetime.now().isoformat()
-    })
-
-@app.route('/analyze-sentiment', methods=['POST'])
-def analyze_sentiment_endpoint():
-    """
-    Analyze sentiment of financial headlines using FinBERT
-    """
-    try:
-        data = request.get_json()
-        
-        if not data or 'headlines' not in data:
-            return jsonify({'error': 'Headlines array required'}), 400
-        
-        headlines = data['headlines']
-        if not isinstance(headlines, list) or len(headlines) == 0:
-            return jsonify({'error': 'Valid headlines array required'}), 400
-        
-        logger.info(f"Analyzing {len(headlines)} headlines with FinBERT")
-        
-        # Analyze each headline
-        results = []
-        total_score = 0
-        
-        for headline in headlines[:20]:  # Limit to 20 headlines
-            if not headline or not isinstance(headline, str):
-                continue
-                
-            sentiment_result = analyze_financial_sentiment(headline)
-            
-            results.append({
-                'headline': headline,
-                'sentiment_score': sentiment_result['score'],
-                'label': sentiment_result['label'],
-                'confidence': sentiment_result['confidence']
-            })
-            
-            total_score += sentiment_result['score']
-        
-        # Calculate overall sentiment
-        overall_sentiment = total_score / len(results) if results else 0.0
-        
-        # Categorize headlines
-        positive_headlines = [r for r in results if r['sentiment_score'] > 0.2]
-        negative_headlines = [r for r in results if r['sentiment_score'] < -0.2]
-        neutral_headlines = [r for r in results if -0.2 <= r['sentiment_score'] <= 0.2]
-        
-        # Generate summary insights
-        positive_summary = []
-        negative_summary = []
-        
-        if positive_headlines:
-            positive_summary = [
-                f"Strong positive sentiment detected in {len(positive_headlines)} headlines",
-                "Market optimism reflected in recent news coverage",
-                "Favorable developments supporting bullish outlook"
-            ][:3]
-        
-        if negative_headlines:
-            negative_summary = [
-                f"Negative sentiment identified in {len(negative_headlines)} headlines", 
-                "Market concerns reflected in recent coverage",
-                "Risk factors requiring attention"
-            ][:2]
-        
-        # Extract key themes
-        all_text = ' '.join(headlines).lower()
-        financial_keywords = {
-            'earnings': ['earnings', 'profit', 'revenue', 'sales'],
-            'partnerships': ['partnership', 'deal', 'acquisition', 'merger'],
-            'regulation': ['regulation', 'regulatory', 'compliance', 'sec'],
-            'innovation': ['innovation', 'technology', 'ai', 'digital'],
-            'market': ['market', 'trading', 'volatility', 'price']
-        }
-        
-        key_themes = []
-        for theme, keywords in financial_keywords.items():
-            if any(keyword in all_text for keyword in keywords):
-                theme_headlines = [h for h in headlines if any(k in h.lower() for k in keywords)]
-                if theme_headlines:
-                    theme_sentiment = sum(
-                        analyze_financial_sentiment(h)['score'] 
-                        for h in theme_headlines[:3]
-                    ) / min(len(theme_headlines), 3)
-                    
-                    key_themes.append({
-                        'theme': theme.title(),
-                        'sentiment': round(theme_sentiment, 2)
-                    })
-        
-        response = {
-            'overall_sentiment': round(overall_sentiment, 3),
-            'headline_results': results,
-            'positive_summary': positive_summary,
-            'negative_summary': negative_summary,
-            'key_themes': key_themes[:5],
-            'market_impact': f"Based on FinBERT analysis, expect {'positive' if overall_sentiment > 0.1 else 'negative' if overall_sentiment < -0.1 else 'neutral'} market reaction",
-            'analysis_metadata': {
-                'total_headlines': len(headlines),
-                'processed_headlines': len(results),
-                'positive_count': len(positive_headlines),
-                'negative_count': len(negative_headlines),
-                'neutral_count': len(neutral_headlines),
-                'model_used': 'ProsusAI/finbert',
-                'timestamp': datetime.now().isoformat()
-            }
-        }
-        
-        return jsonify(response)
-        
-    except Exception as e:
-        logger.error(f"Error in sentiment analysis endpoint: {str(e)}")
-        return jsonify({
-            'error': 'Internal server error',
-            'details': str(e)
-        }), 500
-
-@app.route('/predict-price-enhanced', methods=['POST'])
-def predict_price_enhanced_endpoint():
-    """
-    Enhanced prediction using sentiment integration
-    Expected payload: {
-        "ticker": "AAPL",
-        "price_data": [{"close": 175.42, "date": "2025-07-01"}, ...],
-        "sentiment_data": [{"sentiment_score": 0.6, "news_count": 5, "buzz_score": 1.2}, ...],
-        "prediction_days": 7
-    }
-    """
-    try:
-        data = request.get_json()
-        
-        if not data or 'ticker' not in data or 'price_data' not in data:
-            return jsonify({'error': 'ticker and price_data required'}), 400
-        
-        ticker = data['ticker']
-        price_data = data['price_data']
-        sentiment_data = data.get('sentiment_data', [])
-        prediction_days = data.get('prediction_days', 7)
-        
-        if len(price_data) < 40:
-            return jsonify({'error': 'Need at least 40 days of price data for LSTM training'}), 400
-        
-        logger.info(f"Training Sentiment-Enhanced LSTM for {ticker} with {len(price_data)} price points and {len(sentiment_data)} sentiment points")
-        
-        result = train_and_predict_enhanced(ticker, price_data, sentiment_data, prediction_days)
-        
-        return jsonify(result)
-        
-    except Exception as e:
-        logger.error(f"Error in enhanced prediction endpoint: {str(e)}")
-        return jsonify({
-            'error': 'Internal server error',
-            'details': str(e),
-            'success': False
-        }), 500
-
-@app.route('/analyze-single', methods=['POST'])
-def analyze_single_headline():
-    """
-    Analyze sentiment of a single headline
-    """
-    try:
-        data = request.get_json()
-        
-        if not data or 'text' not in data:
-            return jsonify({'error': 'Text field required'}), 400
-        
-        text = data['text']
-        if not text or not isinstance(text, str):
-            return jsonify({'error': 'Valid text string required'}), 400
-        
-        result = analyze_financial_sentiment(text)
-        
-        return jsonify({
-            'text': text,
-            'sentiment_score': result['score'],
-            'label': result['label'],
-            'confidence': result['confidence'],
-            'timestamp': datetime.now().isoformat()
-        })
-        
-    except Exception as e:
-        logger.error(f"Error in single sentiment analysis: {str(e)}")
-        return jsonify({
-            'error': 'Internal server error',
-            'details': str(e)
-        }), 500
-
-@app.route('/technical-indicators', methods=['POST'])
-def technical_indicators_endpoint():
-    """
-    Calculate technical indicators for a stock
-    """
-    try:
-        data = request.get_json()
-        
-        if not data or 'prices' not in data:
-            return jsonify({'error': 'prices array required'}), 400
-        
-        prices = data['prices']
-        if not isinstance(prices, list) or len(prices) < 20:
-            return jsonify({'error': 'Need at least 20 price points'}), 400
-        
-        indicators = analyze_technical_indicators(prices)
-        
-        return jsonify({
-            'technical_indicators': indicators,
-            'timestamp': datetime.now().isoformat()
-        })
-        
-    except Exception as e:
-        logger.error(f"Error calculating technical indicators: {str(e)}")
-        return jsonify({
-            'error': 'Internal server error',
-            'details': str(e)
-        }), 500
-
-if __name__ == '__main__':
-    logger.info("Starting MarketSense Enhanced ML Service...")
-    
-    # Initialize models on startup
-    model_loaded = initialize_models()
-    
-    if not model_loaded:
-        logger.error("Failed to load FinBERT model. Sentiment analysis will not work properly.")
-    
-    # Start Flask app
-    port = int(os.environ.get('ML_SERVICE_PORT', 5000))
-    app.run(
-        host='0.0.0.0',
-        port=port,
-        debug=os.environ.get('FLASK_ENV') == 'development'
-    )

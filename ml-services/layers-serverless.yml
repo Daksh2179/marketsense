@@ -1,0 +1,34 @@
+service: marketsense-layers
+
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: python3.9
+  stage: prod
+  region: us-east-2
+
+resources:
+  Resources:
+    TransformersLayer:
+      Type: AWS::Lambda::LayerVersion
+      Properties:
+        LayerName: transformers-layer
+        Description: Layer containing Transformers library
+        Content:
+          S3Bucket: ${self:custom.bucket}
+          S3Key: transformers_layer.zip
+        CompatibleRuntimes:
+          - python3.9
+        CompatibleArchitectures:
+          - x86_64
+
+custom:
+  bucket: marketsense-layers  # You'll need to create this bucket first
+
+outputs:
+  TransformersLayerArn:
+    Value:
+      Ref: TransformersLayer
+    Export:
+      Name: ${self:service}-${self:provider.stage}-TransformersLayerArn

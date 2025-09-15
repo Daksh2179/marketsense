@@ -1,0 +1,77 @@
+service: marketsense-api
+
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  stage: prod
+  region: us-east-2
+  memorySize: 1024
+  timeout: 31
+  environment:
+    NODE_ENV: production
+    # Financial API Keys
+    ALPHA_VANTAGE_API_KEY: "HPHZXH2TP5SHDA62"
+    FINNHUB_API_KEY: "d05t3ohr01qgqsu9dg60d05t3ohr01qgqsu9dg6g"
+    NEWSAPI_API_KEY: "a1aab893fa414811a7f8dd7407a36b97"
+    NEWSDATA_API_KEY: "pub_85754b203e3bb30d091f456ebfc0060e752c7"
+    
+    DATABASE_URL: "postgresql://postgres.vbpryxiikmvryxioeajd:4DiGYpJZir1Uv8Ga@aws-0-us-east-1.pooler.supabase.com:6543/postgres"
+
+    # Gemini API Keys
+    GEMINI_API_KEY: "AIzaSyCqkT7uwe8C4mNSBIeF0YlBl0wMPLfapss"
+    GEMINI_API_KEY_2: "AIzaSyA74jc6kuVukOhdmo8tE_F7yvb3-nolAko"
+    GEMINI_API_KEY_3: "AIzaSyA0iEvFTfpd0hwT4i_kJCTADYwJj6jiCcU"
+    
+    # ML Service Configuration
+    ML_SERVICE_URL: "https://dxz93gy0re.execute-api.us-east-2.amazonaws.com"
+  httpApi:
+    cors: true
+
+functions:
+  api:
+    handler: dist/handler.handler
+    events:
+      - httpApi:
+          path: /
+          method: ANY
+      - httpApi:
+          path: /debug
+          method: GET
+      - httpApi:
+          path: /companies
+          method: GET
+      - httpApi:
+          path: /companies/{ticker}
+          method: GET
+      - httpApi:
+          path: /stocks/{ticker}/price
+          method: GET
+      - httpApi:
+          path: /stocks/{ticker}/chart
+          method: GET
+      - httpApi:
+          path: /market/overview
+          method: GET
+      - httpApi:
+          path: /market/performers
+          method: GET
+      - httpApi:
+          path: /market/trending
+          method: GET
+      - httpApi:
+          path: /sentiment/{ticker}
+          method: GET
+      - httpApi:
+          path: /sentiment/{ticker}/headlines
+          method: GET
+      - httpApi:
+          path: /ml/predict/{ticker}
+          method: POST
+      - httpApi:
+          path: /{proxy+}
+          method: ANY
+
+# You can pass parameters during deployment using:
+# serverless deploy --param="ALPHA_VANTAGE_API_KEY=your_key" --param="GEMINI_API_KEY=your_key"
