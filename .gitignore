@@ -48,3 +48,10 @@ __pycache__/
 env/
 venv/
 ENV/
+
+.serverless/
+*.zip
+.env
+*.pem
+*.key
+serverless.yml
